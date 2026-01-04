@@ -58,7 +58,7 @@ class GenerationConfig:
     steps: int = 4
     width: int = 1024
     height: int = 1024
-    quantize: int = 4  # 4-bit default for smaller downloads
+    quantize: int = 4  # 4-bit uses community models, no HF token required
 
     @classmethod
     def for_model(cls, model: str, quantize: int = 4) -> GenerationConfig:
@@ -555,16 +555,16 @@ Examples:
         help="Random seed for reproducibility",
     )
     parser.add_argument(
-        "--list-prompts",
-        action="store_true",
-        help="List all test prompts without generating",
-    )
-    parser.add_argument(
         "--quantize",
         type=int,
         choices=[4, 8],
         default=4,
-        help="Quantization level: 4-bit (default, smaller) or 8-bit (better quality)",
+        help="Quantization level: 4 (smaller, no HF token) or 8 (better quality, requires HF token)",
+    )
+    parser.add_argument(
+        "--list-prompts",
+        action="store_true",
+        help="List all test prompts without generating",
     )
 
     return parser
