@@ -1,0 +1,532 @@
+"""Main application entry point for the Storyteller GUI.
+
+This module provides the main application window with tabbed
+navigation and coordinates all UI components.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+import flet as ft
+
+from storyteller.core import (
+    Story,
+    StoryEngine,
+    create_story,
+    list_stories,
+    load_story,
+    save_story,
+)
+from storyteller.generation import OllamaClient, create_text_generator
+from storyteller.ui.components import StatusBar, StorytellerAppBar
+from storyteller.ui.dialogs import NewStoryDialog, ProgressOverlay
+from storyteller.ui.state import ActiveTab, GenerationStatus, state_manager
+from storyteller.ui.theme import Colors, apply_theme
+from storyteller.ui.views import CreateView, PreviewView, SettingsView
+
+if TYPE_CHECKING:
+    pass
+
+logger = logging.getLogger(__name__)
+
+
+class StorytellerApp:
+    """Main application controller.
+
+    Coordinates all UI components and manages the application lifecycle.
+
+    Attributes:
+        page: The Flet page instance.
+    """
+
+    def __init__(self, page: ft.Page) -> None:
+        """Initialize the application.
+
+        Args:
+            page: The Flet page to build the UI on.
+        """
+        self.page = page
+        self._setup_page()
+        self._create_components()
+        self._build_layout()
+        self._setup_callbacks()
+        self._initialize_state()
+
+    def _setup_page(self) -> None:
+        """Configure the page settings."""
+        self.page.title = "Storyteller"
+        self.page.window.width = 1200
+        self.page.window.height = 800
+        self.page.window.min_width = 900
+        self.page.window.min_height = 600
+        apply_theme(self.page)
+
+    def _create_components(self) -> None:
+        """Create all UI components."""
+        # App bar
+        self._app_bar = StorytellerAppBar(
+            on_new=self._handle_new_story,
+            on_open=self._handle_open_story,
+            on_save=self._handle_save_story,
+            on_export=self._handle_export,
+        )
+
+        # Status bar
+        self._status_bar = StatusBar()
+
+        # Views
+        self._settings_view = SettingsView(
+            on_refresh_models=self._refresh_models,
+        )
+
+        self._create_view = CreateView(
+            on_send=self._handle_send_message,
+            on_generate_page=self._handle_generate_page,
+            on_generate_image=self._handle_generate_image,
+            on_add_character=self._handle_add_character,
+            on_page_select=self._handle_page_select,
+        )
+
+        self._preview_view = PreviewView(
+            on_regenerate=self._handle_generate_image,
+            on_edit=self._handle_edit_from_preview,
+            on_fullscreen=self._handle_fullscreen,
+            on_export=self._handle_export,
+            on_page_change=self._handle_page_select,
+        )
+
+        # Dialogs
+        self._new_story_dialog = NewStoryDialog(
+            on_create=self._create_new_story,
+        )
+        self.page.overlay.append(self._new_story_dialog)
+
+        self._progress_overlay = ProgressOverlay(
+            on_cancel=self._handle_cancel_generation,
+        )
+        self.page.overlay.append(self._progress_overlay)
+
+        # Tabs
+        self._tabs = ft.Tabs(
+            selected_index=1,  # Start on Create tab
+            animation_duration=300,
+            tabs=[
+                ft.Tab(
+                    text="Settings",
+                    icon=ft.Icons.SETTINGS,
+                    content=self._settings_view,
+                ),
+                ft.Tab(
+                    text="Create Story",
+                    icon=ft.Icons.EDIT,
+                    content=self._create_view,
+                ),
+                ft.Tab(
+                    text="Preview",
+                    icon=ft.Icons.VISIBILITY,
+                    content=self._preview_view,
+                ),
+            ],
+            expand=True,
+            on_change=self._handle_tab_change,
+        )
+
+    def _build_layout(self) -> None:
+        """Build the main application layout."""
+        self.page.add(
+            ft.Column(
+                controls=[
+                    self._app_bar,
+                    ft.Container(
+                        content=self._tabs,
+                        expand=True,
+                    ),
+                    self._status_bar,
+                ],
+                spacing=0,
+                expand=True,
+            )
+        )
+
+    def _setup_callbacks(self) -> None:
+        """Set up state change callbacks."""
+        state_manager.add_listener(self._on_state_change)
+
+    def _initialize_state(self) -> None:
+        """Initialize application state."""
+        # Try to fetch available models
+        self._refresh_models()
+
+        # Set initial page count
+        self._preview_view.set_page_count(10, 1)
+
+        # Update UI with initial state
+        self._on_state_change()
+
+    def _on_state_change(self) -> None:
+        """Handle state changes and update UI accordingly."""
+        state = state_manager.state
+
+        # Update app bar title
+        if state.current_story:
+            self._app_bar.update_title(
+                state.current_story.metadata.title,
+                state.is_modified,
+            )
+        else:
+            self._app_bar.update_title(None)
+
+        # Update status bar
+        self._status_bar.update_save_status(not state.is_modified)
+        self._status_bar.update_model(state.config.llm_model)
+
+        if state.current_story:
+            page_count = len(state.current_story.pages) or 1
+            self._status_bar.update_page(state.current_page_number, page_count)
+        else:
+            self._status_bar.update_page(1, 1)
+
+        self._status_bar.update_generation_status(state.generation_status)
+
+    def _handle_tab_change(self, e: ft.ControlEvent) -> None:
+        """Handle tab selection change."""
+        tab_map = {0: ActiveTab.SETTINGS, 1: ActiveTab.CREATE, 2: ActiveTab.PREVIEW}
+        state_manager.set_active_tab(tab_map.get(e.control.selected_index, ActiveTab.CREATE))
+
+    def _handle_new_story(self) -> None:
+        """Handle New Story button click."""
+        self._new_story_dialog.reset()
+        self._new_story_dialog.open = True
+        self.page.update()
+
+    def _create_new_story(self, settings: dict) -> None:
+        """Create a new story with the given settings.
+
+        Args:
+            settings: Dictionary with story settings.
+        """
+        # Create the story
+        story = create_story(
+            title=settings["title"],
+            author=settings["author"],
+            target_age=settings["target_age"],
+            style=settings["style"],
+        )
+
+        # Set up the engine
+        try:
+            generator = create_text_generator(
+                backend="ollama",
+                model=state_manager.state.config.llm_model,
+            )
+            engine = StoryEngine(text_generator=generator)
+            engine.set_story(story)
+            state_manager.state.engine = engine
+        except Exception as e:
+            logger.warning(f"Failed to create text generator: {e}")
+
+        # Update state
+        state_manager.set_story(story)
+        state_manager.clear_conversation()
+
+        # Update views
+        self._settings_view.set_story_settings(
+            title=settings["title"],
+            author=settings["author"],
+            target_age=settings["target_age"],
+            style=settings["style"],
+        )
+
+        page_count = settings.get("page_count", 10)
+        self._preview_view.set_page_count(page_count, 1)
+        self._update_page_list()
+
+        # Switch to Create tab
+        self._tabs.selected_index = 1
+        self.page.update()
+
+    def _handle_open_story(self) -> None:
+        """Handle Open Story button click."""
+        # For now, show a simple file picker or list recent stories
+        stories = list_stories()
+        if stories:
+            # Load the most recent story
+            path, metadata = stories[0]
+            story = load_story(path)
+            state_manager.set_story(story)
+            self._update_ui_from_story(story)
+        else:
+            # Show a snackbar
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text("No saved stories found."),
+            )
+            self.page.snack_bar.open = True
+            self.page.update()
+
+    def _handle_save_story(self) -> None:
+        """Handle Save Story button click."""
+        state = state_manager.state
+        if state.current_story:
+            try:
+                saved_story = save_story(state.current_story)
+                state_manager.set_story(saved_story)
+                state_manager.mark_saved()
+
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text("Story saved successfully!"),
+                    bgcolor=Colors.SUCCESS,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+            except Exception as e:
+                logger.error(f"Failed to save story: {e}")
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Failed to save: {e}"),
+                    bgcolor=Colors.ERROR,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+
+    def _handle_export(self) -> None:
+        """Handle Export button click."""
+        # TODO: Implement export dialog
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text("Export feature coming soon!"),
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def _refresh_models(self) -> None:
+        """Refresh the list of available LLM models."""
+        try:
+            client = OllamaClient()
+            models = client.list_models()
+            state_manager.set_available_models(models)
+            self._settings_view.update_available_models(models)
+        except Exception as e:
+            logger.warning(f"Failed to fetch models: {e}")
+            # Use default
+            state_manager.set_available_models(["phi4"])
+            self._settings_view.update_available_models(["phi4"])
+
+    def _handle_send_message(self, message: str) -> None:
+        """Handle sending a message in the conversation.
+
+        Args:
+            message: The user's message.
+        """
+        state = state_manager.state
+
+        # Show typing indicator
+        self._create_view.set_typing(True)
+        state_manager.set_generation_status(GenerationStatus.GENERATING_TEXT)
+
+        # Process with engine if available
+        if state.engine:
+            try:
+                response = state.engine.process_user_input(message)
+                self._create_view.add_assistant_message(response)
+                state_manager.add_conversation_message("user", message)
+                state_manager.add_conversation_message("assistant", response)
+            except Exception as e:
+                logger.error(f"Failed to process message: {e}")
+                self._create_view.add_assistant_message(
+                    f"Sorry, I encountered an error: {e}"
+                )
+        else:
+            # No engine, provide a placeholder response
+            self._create_view.add_assistant_message(
+                "I'm ready to help you create your story! "
+                "Please create a new story first using the New button."
+            )
+
+        self._create_view.set_typing(False)
+        state_manager.set_generation_status(GenerationStatus.IDLE)
+        self.page.update()
+
+    def _handle_generate_page(self) -> None:
+        """Handle generate page text request."""
+        state = state_manager.state
+
+        if not state.engine or not state.current_story:
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text("Please create a story first."),
+            )
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
+
+        state_manager.set_generation_status(GenerationStatus.GENERATING_TEXT)
+        self._progress_overlay.show("Generating page text...")
+
+        try:
+            page_text = state.engine.generate_page_text(
+                page_number=state.current_page_number,
+                page_purpose="story",
+                total_pages=len(state.current_story.pages) or 10,
+            )
+            # Update current page display
+            self._create_view.update_current_page(page_text, "")
+            state_manager.mark_modified()
+        except Exception as e:
+            logger.error(f"Failed to generate page: {e}")
+            state_manager.set_error(str(e))
+        finally:
+            self._progress_overlay.hide()
+            state_manager.set_generation_status(GenerationStatus.IDLE)
+            self.page.update()
+
+    def _handle_generate_image(self) -> None:
+        """Handle generate illustration request."""
+        self._progress_overlay.show(
+            "Generating illustration...",
+            icon=ft.Icons.BRUSH,
+        )
+        state_manager.set_generation_status(GenerationStatus.GENERATING_IMAGE)
+
+        # TODO: Implement actual image generation with MFLUX
+        # For now, just simulate progress
+        import time
+        for i in range(10):
+            time.sleep(0.1)
+            self._progress_overlay.update_progress(
+                (i + 1) / 10,
+                time_remaining=f"{(10 - i) * 5} seconds",
+            )
+
+        self._progress_overlay.hide()
+        state_manager.set_generation_status(GenerationStatus.IDLE)
+
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text("Image generation coming soon!"),
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def _handle_add_character(self) -> None:
+        """Handle add character request."""
+        # TODO: Implement character dialog
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text("Character dialog coming soon!"),
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def _handle_page_select(self, page_number: int) -> None:
+        """Handle page selection.
+
+        Args:
+            page_number: The selected page number (1-indexed).
+        """
+        state_manager.set_current_page(page_number)
+        self._preview_view.set_page_count(
+            state_manager.state.current_story.pages.__len__()
+            if state_manager.state.current_story
+            else 10,
+            page_number,
+        )
+        self._update_current_page_display()
+
+    def _handle_edit_from_preview(self) -> None:
+        """Handle edit request from preview tab."""
+        self._tabs.selected_index = 1  # Switch to Create tab
+        self.page.update()
+
+    def _handle_fullscreen(self) -> None:
+        """Handle fullscreen preview request."""
+        # TODO: Implement fullscreen preview
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text("Fullscreen preview coming soon!"),
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def _handle_cancel_generation(self) -> None:
+        """Handle cancel generation request."""
+        state_manager.set_generation_status(GenerationStatus.IDLE)
+        # TODO: Actually cancel the generation process
+
+    def _update_ui_from_story(self, story: Story) -> None:
+        """Update all UI components from a loaded story.
+
+        Args:
+            story: The story to display.
+        """
+        # Update settings
+        self._settings_view.set_story_settings(
+            title=story.metadata.title,
+            author=story.metadata.author,
+            target_age=story.metadata.target_age,
+            style=story.metadata.style,
+        )
+
+        # Update page list and preview
+        page_count = len(story.pages) or 1
+        self._preview_view.set_page_count(page_count, 1)
+        self._update_page_list()
+
+        if story.pages:
+            first_page = story.pages[0]
+            self._create_view.update_current_page(
+                first_page.text,
+                first_page.illustration_prompt,
+            )
+            self._preview_view.set_page_text(first_page.text)
+            if first_page.illustration_path:
+                self._preview_view.set_image(first_page.illustration_path)
+
+    def _update_page_list(self) -> None:
+        """Update the page list in the create view."""
+        state = state_manager.state
+        if state.current_story:
+            pages = [
+                {
+                    "number": page.page_number,
+                    "has_text": bool(page.text),
+                    "has_image": page.has_illustration,
+                }
+                for page in state.current_story.pages
+            ]
+        else:
+            # Create placeholder pages
+            page_count = 10
+            pages = [
+                {"number": i, "has_text": False, "has_image": False}
+                for i in range(1, page_count + 1)
+            ]
+
+        self._create_view.update_page_list(pages, state.current_page_number)
+
+    def _update_current_page_display(self) -> None:
+        """Update the current page display in both views."""
+        state = state_manager.state
+        if state.current_story and state.current_story.pages:
+            page = state.current_story.get_page(state.current_page_number)
+            if page:
+                self._create_view.update_current_page(
+                    page.text,
+                    page.illustration_prompt,
+                )
+                self._preview_view.set_page_text(page.text)
+                if page.illustration_path:
+                    self._preview_view.set_image(page.illustration_path)
+
+
+def main(page: ft.Page) -> None:
+    """Main entry point for the Flet application.
+
+    Args:
+        page: The Flet page instance.
+    """
+    StorytellerApp(page)
+
+
+def run() -> None:
+    """Run the Storyteller application."""
+    ft.app(target=main)
+
+
+if __name__ == "__main__":
+    run()
