@@ -40,6 +40,35 @@ class Character:
         """
         return replace(self, **kwargs)
 
+    def to_prompt_fragment(self) -> str:
+        """
+        Convert visual traits to a prompt fragment for image generation.
+
+        Returns:
+            A comma-separated string of visual traits, or an empty string
+            if no traits are defined.
+
+        Example:
+            >>> char = Character("Luna", "A brave mouse", ("small brown mouse", "red scarf"))
+            >>> char.to_prompt_fragment()
+            'small brown mouse, red scarf'
+        """
+        return ", ".join(self.visual_traits) if self.visual_traits else ""
+
+    def appears_in_text(self, text: str) -> bool:
+        """
+        Check if this character's name appears in the given text.
+
+        Uses case-insensitive matching.
+
+        Args:
+            text: The text to search.
+
+        Returns:
+            True if the character's name appears in the text.
+        """
+        return self.name.lower() in text.lower()
+
 
 @dataclass(frozen=True)
 class Page:

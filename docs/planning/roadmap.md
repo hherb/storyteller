@@ -1,41 +1,49 @@
 # Development Roadmap
 
-## Phase 1: Foundation (Current)
+## Phase 1: Foundation (COMPLETED)
 
-### Completed
 - [x] Project structure and configuration
 - [x] MFLUX image generation prototype
 - [x] Documentation structure
-
-### In Progress
-- [ ] Evaluate MFLUX image quality for children's illustrations
-- [ ] Test different illustration styles
-
-### Next
 - [x] Ollama LLM integration prototype
 - [x] Story conversation flow design
 
-## Phase 2: Core Engine
+## Phase 2: Core Engine (COMPLETED)
 
 - [x] Story and Page data models
 - [x] Story persistence (save/load)
 - [x] LLM-based story guidance engine
 - [x] Prompt templates for story assistance
 
-## Phase 3: Image Generation Integration
+## Phase 3: Image Generation Integration (COMPLETED)
 
-- [ ] MFLUX wrapper with error handling
-- [ ] Illustration prompt generation from story context
-- [ ] Character consistency tracking
-- [ ] Style presets (watercolor, cartoon, etc.)
+See [phase-3-image-generation.md](./phase-3-image-generation.md) for detailed plan.
 
-## Phase 4: User Interface
+- [x] MFLUX wrapper with error handling (`generation/image.py`)
+- [x] Style presets module (`generation/styles.py`)
+- [x] Illustration prompt generation from story context
+- [x] Character dataclass and consistency tracking
+- [x] Character definition dialog
+- [x] UI integration with progress feedback
 
-- [ ] Flet application shell
-- [ ] Home screen / project browser
-- [ ] Story editor with page navigation
-- [ ] Illustration preview and regeneration
-- [ ] Settings and preferences
+## Phase 4: User Interface (90% COMPLETE)
+
+### Completed
+- [x] Flet application shell with tabbed layout
+- [x] App bar with project title and quick actions
+- [x] Status bar with save/model/page indicators
+- [x] Settings tab with all configuration cards
+- [x] Create Story tab with conversation UI
+- [x] Preview tab with image display and navigation
+- [x] New Story dialog
+- [x] Progress overlay dialog
+- [x] State management
+- [x] Character definition dialog
+
+### Remaining
+- [ ] Export dialog
+- [ ] Fullscreen preview mode
+- [ ] Keyboard shortcuts
 
 ## Phase 5: Export and Polish
 

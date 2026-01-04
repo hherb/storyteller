@@ -7,6 +7,8 @@ navigation and coordinates all UI components.
 from __future__ import annotations
 
 import logging
+import threading
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import flet as ft
@@ -14,15 +16,27 @@ import flet as ft
 from storyteller.core import (
     Story,
     StoryEngine,
+    add_character,
+    create_character,
     create_story,
     list_stories,
     load_story,
     save_story,
+    update_page,
 )
-from storyteller.generation import OllamaClient, create_text_generator
+from storyteller.generation import (
+    GenerationProgress,
+    ImageConfig,
+    ImageGenerator,
+    OllamaClient,
+    build_illustration_prompt_for_page,
+    check_mflux_available,
+    check_platform,
+    create_text_generator,
+)
 from storyteller.ui.components import StatusBar, StorytellerAppBar
-from storyteller.ui.dialogs import NewStoryDialog, ProgressOverlay
-from storyteller.ui.state import ActiveTab, GenerationStatus, state_manager
+from storyteller.ui.dialogs import CharacterDialog, NewStoryDialog, ProgressOverlay
+from storyteller.ui.state import ActiveTab, AppConfig, GenerationStatus, state_manager
 from storyteller.ui.theme import Colors, apply_theme
 from storyteller.ui.views import CreateView, PreviewView, SettingsView
 
@@ -103,10 +117,20 @@ class StorytellerApp:
         )
         self.page.overlay.append(self._new_story_dialog)
 
+        self._character_dialog = CharacterDialog(
+            on_save=self._save_character,
+            on_extract_traits=self._extract_character_traits,
+        )
+        self.page.overlay.append(self._character_dialog)
+
         self._progress_overlay = ProgressOverlay(
             on_cancel=self._handle_cancel_generation,
         )
         self.page.overlay.append(self._progress_overlay)
+
+        # Image generator (lazy loaded)
+        self._image_generator: ImageGenerator | None = None
+        self._generation_cancel_requested = False
 
         # Tabs - using new Flet 0.80+ API with TabBar + TabBarView
         self._tabs = ft.Tabs(
@@ -383,41 +407,312 @@ class StorytellerApp:
             state_manager.set_generation_status(GenerationStatus.IDLE)
             self.page.update()
 
+    def _create_image_config(self, app_config: "AppConfig") -> ImageConfig:
+        """Create an ImageConfig from app configuration.
+
+        Handles conversion of UI-friendly settings to ImageConfig,
+        including validation and fallback to safe defaults.
+
+        Args:
+            app_config: The AppConfig from state.
+
+        Returns:
+            A valid ImageConfig instance.
+        """
+        # Parse quantization from string (e.g., "4-bit" -> 4)
+        quantize_str = app_config.image_quantization
+        quantize = 4 if "4" in quantize_str else 8
+
+        # Get model and steps
+        model = app_config.image_model
+        steps = app_config.image_steps
+
+        # Validate steps for the model, use safe defaults if invalid
+        if model == "schnell":
+            if not (2 <= steps <= 8):
+                logger.warning(
+                    f"Steps {steps} invalid for schnell model, using default 4"
+                )
+                steps = 4
+        elif model == "dev":
+            if not (15 <= steps <= 30):
+                logger.warning(
+                    f"Steps {steps} invalid for dev model, using default 20"
+                )
+                steps = 20
+
+        return ImageConfig(
+            model=model,
+            steps=steps,
+            quantize=quantize,
+        )
+
     def _handle_generate_image(self) -> None:
         """Handle generate illustration request."""
+        state = state_manager.state
+
+        # Check if we have a story
+        if not state.current_story:
+            self._show_snackbar("Please create a story first.", Colors.WARNING)
+            return
+
+        # Check if current page has text
+        page = state.current_story.get_page(state.current_page_number)
+        if not page or not page.text:
+            self._show_snackbar(
+                "Please add text to this page before generating an illustration.",
+                Colors.WARNING,
+            )
+            return
+
+        # Check platform and MFLUX availability
+        platform_ok, platform_msg = check_platform()
+        if not platform_ok:
+            self._show_snackbar(platform_msg, Colors.ERROR)
+            return
+
+        mflux_ok, mflux_msg = check_mflux_available()
+        if not mflux_ok:
+            self._show_snackbar(mflux_msg, Colors.ERROR)
+            return
+
+        # Show progress overlay
         self._progress_overlay.show(
             "Generating illustration...",
             icon=ft.Icons.BRUSH,
         )
         state_manager.set_generation_status(GenerationStatus.GENERATING_IMAGE)
+        self._generation_cancel_requested = False
 
-        # TODO: Implement actual image generation with MFLUX
-        # For now, just simulate progress
-        import time
-        for i in range(10):
-            time.sleep(0.1)
+        # Run generation in background thread
+        def generate_in_background() -> None:
+            try:
+                self._run_image_generation(state, page)
+            except Exception as e:
+                logger.error(f"Image generation failed: {e}")
+                self._on_generation_complete(success=False, error=str(e))
+
+        thread = threading.Thread(target=generate_in_background, daemon=True)
+        thread.start()
+
+    def _run_image_generation(self, state, page) -> None:
+        """Run image generation in background.
+
+        Args:
+            state: Current app state.
+            page: The page to generate an image for.
+        """
+        # Build the illustration prompt
+        characters = [
+            (c.name, c.description, c.visual_traits)
+            for c in state.current_story.characters
+        ]
+
+        prompt = build_illustration_prompt_for_page(
+            page_text=page.text,
+            all_characters=characters,
+            style=state.current_story.metadata.style,
+        )
+
+        logger.info(f"Generated prompt: {prompt[:100]}...")
+
+        # Set up output path
+        if state.current_story.project_path:
+            output_dir = state.current_story.project_path / "pages"
+        else:
+            # Use temp directory for unsaved stories
+            import tempfile
+            output_dir = Path(tempfile.gettempdir()) / "storyteller" / "temp_story"
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"page_{page.page_number:02d}.png"
+
+        # Create or get image generator with safe config
+        config = self._create_image_config(state.config)
+
+        if self._image_generator is None:
+            self._image_generator = ImageGenerator(config)
+        else:
+            # Update config if needed
+            self._image_generator.update_config(config)
+
+        # Progress callback
+        def on_progress(progress: GenerationProgress) -> None:
+            if self._generation_cancel_requested:
+                return
             self._progress_overlay.update_progress(
-                (i + 1) / 10,
-                time_remaining=f"{(10 - i) * 5} seconds",
+                progress.progress,
+                time_remaining=progress.status,
             )
 
+        # Generate the image
+        result = self._image_generator.generate(
+            prompt=prompt,
+            output_path=output_path,
+            progress_callback=on_progress,
+        )
+
+        if result.success:
+            # Update the story with the new illustration path
+            self._on_generation_complete(
+                success=True,
+                image_path=result.image_path,
+                page_number=page.page_number,
+                prompt=prompt,
+            )
+        else:
+            self._on_generation_complete(
+                success=False,
+                error=result.error or "Unknown error",
+            )
+
+    def _on_generation_complete(
+        self,
+        success: bool,
+        error: str | None = None,
+        image_path: Path | None = None,
+        page_number: int | None = None,
+        prompt: str | None = None,
+    ) -> None:
+        """Handle generation completion (called from background thread).
+
+        Args:
+            success: Whether generation succeeded.
+            error: Error message if failed.
+            image_path: Path to generated image.
+            page_number: Page number that was generated.
+            prompt: The prompt that was used.
+        """
+        # Hide progress overlay
         self._progress_overlay.hide()
         state_manager.set_generation_status(GenerationStatus.IDLE)
 
+        if success and image_path and page_number:
+            # Update story with new illustration
+            state = state_manager.state
+            if state.current_story:
+                try:
+                    updated_story = update_page(
+                        state.current_story,
+                        page_number,
+                        illustration_path=image_path,
+                        illustration_prompt=prompt or "",
+                    )
+                    state_manager.set_story(updated_story)
+                    state_manager.mark_modified()
+
+                    # Update preview
+                    self._preview_view.set_image(image_path)
+                    self._update_page_list()
+
+                    self._show_snackbar(
+                        f"Illustration generated for page {page_number}!",
+                        Colors.SUCCESS,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to update story: {e}")
+                    self._show_snackbar(f"Failed to save illustration: {e}", Colors.ERROR)
+        else:
+            self._show_snackbar(
+                f"Generation failed: {error or 'Unknown error'}",
+                Colors.ERROR,
+            )
+
+        self.page.update()
+
+    def _show_snackbar(self, message: str, bgcolor: str | None = None) -> None:
+        """Show a snackbar message.
+
+        Args:
+            message: The message to show.
+            bgcolor: Optional background color.
+        """
         self.page.snack_bar = ft.SnackBar(
-            content=ft.Text("Image generation coming soon!"),
+            content=ft.Text(message),
+            bgcolor=bgcolor,
         )
         self.page.snack_bar.open = True
         self.page.update()
 
     def _handle_add_character(self) -> None:
         """Handle add character request."""
-        # TODO: Implement character dialog
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text("Character dialog coming soon!"),
-        )
-        self.page.snack_bar.open = True
+        if not state_manager.state.current_story:
+            self._show_snackbar("Please create a story first.", Colors.WARNING)
+            return
+
+        self._character_dialog.reset()
+        self._character_dialog.open = True
         self.page.update()
+
+    def _save_character(self, char_data: dict) -> None:
+        """Save a new character from the dialog.
+
+        Args:
+            char_data: Dictionary with name, description, visual_traits.
+        """
+        state = state_manager.state
+        if not state.current_story:
+            return
+
+        # Create the character
+        character = create_character(
+            name=char_data["name"],
+            description=char_data["description"],
+            visual_traits=char_data.get("visual_traits", []),
+        )
+
+        # Add to story
+        updated_story = add_character(state.current_story, character)
+        state_manager.set_story(updated_story)
+        state_manager.mark_modified()
+
+        # Update character list in create view
+        self._update_character_list()
+
+        self._show_snackbar(f"Character '{character.name}' added!", Colors.SUCCESS)
+
+    def _extract_character_traits(self, name: str, description: str) -> list[str]:
+        """Extract visual traits from character description using LLM.
+
+        Args:
+            name: Character name.
+            description: Character description.
+
+        Returns:
+            List of visual trait strings.
+        """
+        state = state_manager.state
+
+        if not state.engine:
+            # Return empty list if no engine available
+            return []
+
+        try:
+            # Use the engine to extract traits
+            from storyteller.generation import EXTRACT_VISUAL_TRAITS
+
+            prompt = EXTRACT_VISUAL_TRAITS.render(
+                name=name,
+                description=description,
+            )
+
+            response = state.engine.text_generator.generate(prompt)
+            # Parse comma-separated traits
+            traits = [t.strip() for t in response.split(",") if t.strip()]
+            return traits[:6]  # Limit to 6 traits
+        except Exception as e:
+            logger.warning(f"Failed to extract traits: {e}")
+            return []
+
+    def _update_character_list(self) -> None:
+        """Update the character list in the create view."""
+        state = state_manager.state
+        if state.current_story:
+            characters = [
+                {"name": c.name, "description": c.description}
+                for c in state.current_story.characters
+            ]
+            self._create_view.update_character_list(characters)
 
     def _handle_page_select(self, page_number: int) -> None:
         """Handle page selection.
@@ -450,8 +745,15 @@ class StorytellerApp:
 
     def _handle_cancel_generation(self) -> None:
         """Handle cancel generation request."""
+        self._generation_cancel_requested = True
+
+        # Cancel the image generator if running
+        if self._image_generator:
+            self._image_generator.cancel()
+
         state_manager.set_generation_status(GenerationStatus.IDLE)
-        # TODO: Actually cancel the generation process
+        self._progress_overlay.hide()
+        self._show_snackbar("Generation cancelled.", Colors.WARNING)
 
     def _update_ui_from_story(self, story: Story) -> None:
         """Update all UI components from a loaded story.
