@@ -58,7 +58,7 @@ class GenerationConfig:
     steps: int = 4
     width: int = 1024
     height: int = 1024
-    quantize: int = 4  # 4-bit uses pre-quantized community models (no HF token needed)
+    quantize: int = 4  # 4-bit default for smaller downloads
 
     @classmethod
     def for_model(cls, model: str, quantize: int = 4) -> GenerationConfig:
@@ -67,7 +67,7 @@ class GenerationConfig:
 
         Args:
             model: Model variant ("schnell" or "dev").
-            quantize: Quantization level (4 or 8). 4-bit uses community models.
+            quantize: Quantization level (4 or 8).
 
         Returns:
             GenerationConfig with appropriate settings.
@@ -564,7 +564,7 @@ Examples:
         type=int,
         choices=[4, 8],
         default=4,
-        help="Quantization level: 4 (smaller, no HF token) or 8 (larger, better quality)",
+        help="Quantization level: 4-bit (default, smaller) or 8-bit (better quality)",
     )
 
     return parser
