@@ -26,26 +26,25 @@ brew install uv
 git clone https://github.com/hherb/storyteller.git
 cd storyteller
 
-# Create virtual environment and install dependencies
-uv venv
-source .venv/bin/activate
-
-# Install in development mode with all dependencies
-uv pip install -e ".[all]"
+# Install all dependencies (creates venv automatically)
+uv sync --all-extras
 ```
+
+That's it! `uv sync` automatically:
+- Creates a `.venv` virtual environment
+- Installs all dependencies from `uv.lock`
+- Installs the project in editable mode
 
 ## Installing AI Models
 
 ### MFLUX (Image Generation)
 
 ```bash
-# Install mflux
-uv pip install mflux
-
 # First run will download models (~12-23GB)
 # Test with the prototype:
 cd prototypes/mflux_test
-python generate_test_images.py --prompt "A test image" --output test.png
+uv sync
+uv run python generate_test_images.py --prompt "A test image" --output test.png
 ```
 
 ### Ollama (Language Model)
@@ -65,26 +64,26 @@ ollama pull phi4
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=src/storyteller
+uv run pytest --cov=src/storyteller
 
 # Run specific test file
-pytest tests/test_core/test_story.py
+uv run pytest tests/test_core/test_story.py
 ```
 
 ## Code Quality
 
 ```bash
 # Lint code
-ruff check src/ tests/
+uv run ruff check src/ tests/
 
 # Format code
-ruff format src/ tests/
+uv run ruff format src/ tests/
 
 # Type checking
-mypy src/
+uv run mypy src/
 ```
 
 ## Project Structure
@@ -95,10 +94,21 @@ See [architecture.md](architecture.md) for detailed project structure documentat
 
 1. Create a feature branch: `git checkout -b feature/my-feature`
 2. Make changes following the guidelines in `/CLAUDE.md`
-3. Ensure all tests pass: `pytest`
-4. Ensure code quality: `ruff check src/`
+3. Ensure all tests pass: `uv run pytest`
+4. Ensure code quality: `uv run ruff check src/`
 5. Commit with conventional commit messages
 6. Create a pull request
+
+## Common uv Commands
+
+| Command | Description |
+|---------|-------------|
+| `uv sync` | Install dependencies from lockfile |
+| `uv sync --all-extras` | Install with all optional dependencies |
+| `uv add <package>` | Add a new dependency |
+| `uv remove <package>` | Remove a dependency |
+| `uv run <command>` | Run command in the virtual environment |
+| `uv lock` | Update the lockfile |
 
 ## Common Issues
 

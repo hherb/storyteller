@@ -15,15 +15,8 @@ Test FLUX image generation quality for children's book illustrations on Apple Si
 # Navigate to the prototype directory
 cd prototypes/mflux_test
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies (recommended method using uv)
-uv pip install mflux
-
-# Or using pip
-pip install -r requirements.txt
+# Install dependencies (creates venv automatically)
+uv sync
 ```
 
 ## Usage
@@ -32,7 +25,7 @@ pip install -r requirements.txt
 
 ```bash
 # Generate a single test image (fast)
-python generate_test_images.py \
+uv run python generate_test_images.py \
     --prompt "A friendly brown bear reading a book under a tree, children's book illustration, warm colors" \
     --output test_bear.png
 ```
@@ -41,19 +34,19 @@ python generate_test_images.py \
 
 ```bash
 # Run all test prompts with schnell (fast) model
-python generate_test_images.py --test-suite
+uv run python generate_test_images.py --test-suite
 
 # Run with dev model (slower but higher quality)
-python generate_test_images.py --test-suite --model dev
+uv run python generate_test_images.py --test-suite --model dev
 
 # Test specific style categories only
-python generate_test_images.py --test-suite --categories watercolor cartoon
+uv run python generate_test_images.py --test-suite --categories watercolor cartoon
 ```
 
 ### List Available Test Prompts
 
 ```bash
-python generate_test_images.py --list-prompts
+uv run python generate_test_images.py --list-prompts
 ```
 
 ## Test Categories
@@ -125,9 +118,7 @@ image.save(path="output.png")
 ### "mflux not installed"
 
 ```bash
-pip install mflux
-# or
-uv pip install mflux
+uv sync
 ```
 
 ### Out of memory

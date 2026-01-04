@@ -44,10 +44,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/hherb/storyteller.git
 cd storyteller
 
-# Create virtual environment and install dependencies
-uv venv
-source .venv/bin/activate
-uv pip install -e .
+# Install dependencies (creates venv automatically)
+uv sync
 ```
 
 ### First Run
@@ -108,14 +106,13 @@ storyteller/
 
 ```bash
 cd prototypes/mflux_test
-uv venv && source .venv/bin/activate
-uv pip install -r requirements.txt
+uv sync
 
 # Generate test images
-python generate_test_images.py --test-suite
+uv run python generate_test_images.py --test-suite
 
 # Generate single image
-python generate_test_images.py --prompt "A friendly bear in the forest" --output bear.png
+uv run python generate_test_images.py --prompt "A friendly bear in the forest" --output bear.png
 ```
 
 ### Running the Application
@@ -143,17 +140,17 @@ Contributions are welcome! Please read our development guidelines in [CLAUDE.md]
 ### Development Setup
 
 ```bash
-# Install development dependencies
-uv pip install -e ".[all]"
+# Install with all development dependencies
+uv sync --all-extras
 
 # Run tests
-pytest
+uv run pytest
 
 # Run linting
-ruff check src/
+uv run ruff check src/
 
 # Type checking
-mypy src/
+uv run mypy src/
 ```
 
 ## License
