@@ -19,7 +19,10 @@ cd prototypes/mflux_test
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
+# Install dependencies (recommended method using uv)
+uv pip install mflux
+
+# Or using pip
 pip install -r requirements.txt
 ```
 
@@ -68,8 +71,8 @@ The test suite includes prompts across 4 illustration styles:
 
 | Model | Steps | Speed | Quality | Best For |
 |-------|-------|-------|---------|----------|
-| **schnell** | 4 | ~30-60s | Good | Quick previews, iteration |
-| **dev** | 20 | ~2-4min | Excellent | Final illustrations |
+| **schnell** | 2-4 | ~30-60s | Good | Quick previews, iteration |
+| **dev** | 20-25 | ~2-4min | Excellent | Final illustrations |
 
 ## Expected Output
 
@@ -92,22 +95,60 @@ generated_images/
         └── underwater.png
 ```
 
+## Python API
+
+The script uses the MFLUX Python API:
+
+```python
+from mflux.models.flux.variants.txt2img.flux import Flux1
+
+# Load model with 8-bit quantization
+flux = Flux1.from_name(
+    model_name="schnell",  # or "dev"
+    quantize=8,
+)
+
+# Generate image
+image = flux.generate_image(
+    seed=42,
+    prompt="A friendly mouse in a garden",
+    num_inference_steps=4,  # 2-4 for schnell, 20-25 for dev
+    height=1024,
+    width=1024,
+)
+
+image.save(path="output.png")
+```
+
 ## Troubleshooting
 
 ### "mflux not installed"
+
 ```bash
 pip install mflux
+# or
+uv pip install mflux
 ```
 
 ### Out of memory
+
 - Close other applications
-- Try reducing image size (modify script)
-- Use 8-bit quantization (already enabled by default)
+- The script uses 8-bit quantization by default to reduce memory
+- 32GB RAM is recommended for comfortable usage
 
 ### Slow generation
+
 - First run downloads the model (~12-23GB)
 - Subsequent runs should be 30-90 seconds per image
 - Use `schnell` model for faster iteration
+
+### Import errors
+
+Ensure you're using the correct import path:
+
+```python
+from mflux.models.flux.variants.txt2img.flux import Flux1
+```
 
 ## Evaluation Criteria
 
@@ -122,6 +163,7 @@ When reviewing generated images, consider:
 ## Next Steps
 
 After evaluation:
+
 1. Note which styles work best
 2. Test character consistency (same character, different poses)
 3. Try custom prompts matching your story concepts
