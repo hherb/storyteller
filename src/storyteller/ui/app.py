@@ -455,12 +455,15 @@ class StorytellerApp:
 
         # Check if we have a story
         if not state.current_story:
+            logger.warning("No story exists - cannot generate image")
             self._show_snackbar("Please create a story first.", Colors.WARNING)
             return
 
         # Check if current page has text
         page = state.current_story.get_page(state.current_page_number)
+        logger.info(f"Current page: {state.current_page_number}, page object: {page}")
         if not page or not page.text:
+            logger.warning(f"Page has no text - page={page}, text={page.text if page else None}")
             self._show_snackbar(
                 "Please add text to this page before generating an illustration.",
                 Colors.WARNING,
@@ -469,14 +472,18 @@ class StorytellerApp:
 
         # Check platform and MFLUX availability
         platform_ok, platform_msg = check_platform()
+        logger.info(f"Platform check: ok={platform_ok}, msg={platform_msg}")
         if not platform_ok:
             self._show_snackbar(platform_msg, Colors.ERROR)
             return
 
         mflux_ok, mflux_msg = check_mflux_available()
+        logger.info(f"MFLUX check: ok={mflux_ok}, msg={mflux_msg}")
         if not mflux_ok:
             self._show_snackbar(mflux_msg, Colors.ERROR)
             return
+
+        logger.info("All checks passed, starting image generation")
 
         # Show progress overlay
         self._progress_overlay.show(
@@ -609,9 +616,10 @@ class StorytellerApp:
                         state_manager.set_story(updated_story)
                         state_manager.mark_modified()
 
-                        # Update preview
+                        # Update preview and current page display
                         self._preview_view.set_image(image_path)
                         self._update_page_list()
+                        self._update_current_page_display()
 
                         self._show_snackbar(
                             f"Illustration generated for page {page_number}!",
