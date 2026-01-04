@@ -37,16 +37,17 @@ Rather than generating entire stories from a single prompt, Storyteller emphasiz
 ## Installation
 
 ```bash
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # Clone the repository
 git clone https://github.com/hherb/storyteller.git
 cd storyteller
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -e .
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 ```
 
 ### First Run
@@ -67,6 +68,11 @@ storyteller/
 ├── prototypes/               # Experimental code and evaluations
 │   └── mflux_test/          # Image generation quality testing
 ├── docs/                     # Documentation
+│   ├── user/                # End-user guides
+│   ├── developers/          # Developer documentation
+│   ├── llm/                 # AI assistant reference
+│   └── planning/            # Roadmaps and technical decisions
+├── CLAUDE.md                # AI assistant guidelines
 └── pyproject.toml           # Project configuration
 ```
 
@@ -102,8 +108,8 @@ storyteller/
 
 ```bash
 cd prototypes/mflux_test
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+uv venv && source .venv/bin/activate
+uv pip install -r requirements.txt
 
 # Generate test images
 python generate_test_images.py --test-suite
@@ -121,6 +127,15 @@ python generate_test_images.py --prompt "A friendly bear in the forest" --output
 python -m storyteller
 ```
 
+## Documentation
+
+| Audience | Location | Description |
+|----------|----------|-------------|
+| End Users | [docs/user/](docs/user/) | Getting started, usage guides |
+| Developers | [docs/developers/](docs/developers/) | Setup, architecture, contributing |
+| AI Assistants | [docs/llm/](docs/llm/) | Quick reference, API patterns |
+| Planning | [docs/planning/](docs/planning/) | Roadmaps, technical decisions |
+
 ## Contributing
 
 Contributions are welcome! Please read our development guidelines in [CLAUDE.md](CLAUDE.md) for code style and architecture decisions.
@@ -129,13 +144,16 @@ Contributions are welcome! Please read our development guidelines in [CLAUDE.md]
 
 ```bash
 # Install development dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[all]"
 
 # Run tests
 pytest
 
 # Run linting
 ruff check src/
+
+# Type checking
+mypy src/
 ```
 
 ## License

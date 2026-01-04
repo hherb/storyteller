@@ -40,17 +40,34 @@ src/storyteller/
 1. **Offline-First**: All AI models run locally. No network calls after installation.
 2. **Separation of Concerns**: Core logic is independent of UI framework.
 3. **Immutable Data**: Use frozen dataclasses for story data structures.
-4. **Pure Functions**: Prefer pure functions over stateful classes where practical.
+4. **Pure Functions**: Prefer reusable pure functions over complex stateful classes.
+5. **Package Manager**: Use `uv` throughout for dependency management.
+
+## Documentation Structure
+
+```
+docs/
+├── user/           # End-user documentation (getting started, usage guides)
+├── developers/     # Developer documentation (setup, architecture, contributing)
+├── llm/            # AI assistant context (quick reference, API examples)
+└── planning/       # Technical decisions, roadmaps, design documents
+```
+
+- **docs/user/**: Guides for end users of the application
+- **docs/developers/**: Setup guides, architecture docs for contributors
+- **docs/llm/**: Quick-reference for AI assistants (API patterns, common code)
+- **docs/planning/**: Roadmaps, technical decisions, feature specifications
 
 ## Code Style
 
 ### Python Standards
 
 - **Python Version**: 3.10+ (for modern type hint syntax)
-- **Type Hints**: Required on all function signatures
-- **Docstrings**: Required for all public functions and classes (Google style)
+- **Type Hints**: **MANDATORY** on all functions, methods, and class attributes. No exceptions.
+- **Docstrings**: **MANDATORY** for all functions, classes, and methods. Use Google style. No exceptions.
 - **Line Length**: 100 characters maximum
 - **Imports**: Use `from __future__ import annotations` for forward references
+- **Package Manager**: Always use `uv` for installing and managing dependencies
 
 ### Example Function
 
