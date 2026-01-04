@@ -1,5 +1,9 @@
 """Core functionality for story creation and management."""
 
+from .engine import (
+    ConversationState,
+    StoryEngine,
+)
 from .persistence import (
     delete_story,
     get_export_path,
@@ -54,4 +58,7 @@ __all__ = [
     "get_stories_directory",
     "get_page_illustration_path",
     "get_export_path",
+    # Engine
+    "ConversationState",
+    "StoryEngine",
 ]

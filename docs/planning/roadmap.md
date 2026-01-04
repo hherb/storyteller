@@ -12,15 +12,15 @@
 - [ ] Test different illustration styles
 
 ### Next
-- [ ] Ollama LLM integration prototype
-- [ ] Story conversation flow design
+- [x] Ollama LLM integration prototype
+- [x] Story conversation flow design
 
 ## Phase 2: Core Engine
 
 - [x] Story and Page data models
 - [x] Story persistence (save/load)
-- [ ] LLM-based story guidance engine
-- [ ] Prompt templates for story assistance
+- [x] LLM-based story guidance engine
+- [x] Prompt templates for story assistance
 
 ## Phase 3: Image Generation Integration
 
