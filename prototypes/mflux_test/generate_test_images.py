@@ -220,6 +220,7 @@ def generate_image(
         error_message is None on success.
     """
     try:
+        from mflux.config.config import Config as MfluxConfig
         from mflux.models.flux.variants.txt2img.flux import Flux1
     except ImportError as e:
         return False, 0.0, f"mflux not installed. Run: pip install mflux. Details: {e}"
@@ -231,15 +232,20 @@ def generate_image(
             quantize=config.quantize,
         )
 
+        # Create MFLUX config for generation
+        mflux_config = MfluxConfig(
+            num_inference_steps=config.steps,
+            height=config.height,
+            width=config.width,
+        )
+
         # Generate the image
         start_time = time.time()
 
         image = flux.generate_image(
             seed=seed,
             prompt=prompt,
-            num_inference_steps=config.steps,
-            height=config.height,
-            width=config.width,
+            config=mflux_config,
         )
 
         generation_time = time.time() - start_time

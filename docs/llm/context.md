@@ -31,19 +31,24 @@ from storyteller.ui.app import main
 ## MFLUX API Reference
 
 ```python
+from mflux.config.config import Config
 from mflux.models.flux.variants.txt2img.flux import Flux1
 
 flux = Flux1.from_name(
     model_name="schnell",  # or "dev"
-    quantize=8,            # 3, 4, 5, 6, or 8
+    quantize=4,            # 3, 4, 5, 6, or 8
+)
+
+config = Config(
+    num_inference_steps=4,  # 2-4 for schnell, 20-25 for dev
+    height=1024,
+    width=1024,
 )
 
 image = flux.generate_image(
     seed=42,
     prompt="...",
-    num_inference_steps=4,  # 2-4 for schnell, 20-25 for dev
-    height=1024,
-    width=1024,
+    config=config,
 )
 
 image.save(path="output.png")

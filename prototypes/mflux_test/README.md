@@ -108,6 +108,7 @@ generated_images/
 The script uses the MFLUX Python API:
 
 ```python
+from mflux.config.config import Config
 from mflux.models.flux.variants.txt2img.flux import Flux1
 
 # Load model with 4-bit quantization (no HF token needed)
@@ -116,13 +117,18 @@ flux = Flux1.from_name(
     quantize=4,            # 4 = community models, 8 = requires HF token
 )
 
+# Create config for generation
+config = Config(
+    num_inference_steps=4,  # 2-4 for schnell, 20-25 for dev
+    height=1024,
+    width=1024,
+)
+
 # Generate image
 image = flux.generate_image(
     seed=42,
     prompt="A friendly mouse in a garden",
-    num_inference_steps=4,  # 2-4 for schnell, 20-25 for dev
-    height=1024,
-    width=1024,
+    config=config,
 )
 
 image.save(path="output.png")
