@@ -63,7 +63,7 @@ class StorytellerAppBar(ft.Container):
         logo = ft.Row(
             controls=[
                 ft.Icon(
-                    name=ft.Icons.AUTO_STORIES,
+                    ft.Icons.AUTO_STORIES,
                     color=Colors.PRIMARY,
                     size=Dimensions.ICON_LG,
                 ),

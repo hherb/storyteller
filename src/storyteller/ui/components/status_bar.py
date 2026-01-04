@@ -26,7 +26,7 @@ class StatusBar(ft.Container):
         self._save_status = ft.Row(
             controls=[
                 ft.Icon(
-                    name=ft.Icons.CHECK_CIRCLE,
+                    ft.Icons.CHECK_CIRCLE,
                     color=Colors.SUCCESS,
                     size=Dimensions.ICON_SM,
                 ),
@@ -108,11 +108,11 @@ class StatusBar(ft.Container):
         text = self._save_status.controls[1]
 
         if is_saved:
-            icon.name = ft.Icons.CHECK_CIRCLE
+            icon.icon = ft.Icons.CHECK_CIRCLE
             icon.color = Colors.SUCCESS
             text.value = "Saved"
         else:
-            icon.name = ft.Icons.CIRCLE_OUTLINED
+            icon.icon = ft.Icons.CIRCLE_OUTLINED
             icon.color = Colors.WARNING
             text.value = "Unsaved"
 

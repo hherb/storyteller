@@ -19,6 +19,31 @@ from storyteller.ui.theme import (
 )
 
 
+def _safe_update(func: Callable) -> Callable:
+    """Decorator that safely calls update() only if the control is mounted.
+
+    Wraps methods that call self.page or update() to catch RuntimeError
+    when the control hasn't been added to a page yet.
+
+    Args:
+        func: The method to wrap.
+
+    Returns:
+        Wrapped method that handles unmounted controls gracefully.
+    """
+    from functools import wraps
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except RuntimeError:
+            # Control not mounted to page yet, skip update
+            pass
+
+    return wrapper
+
+
 class PreviewView(ft.Container):
     """Preview tab content.
 
@@ -57,7 +82,7 @@ class PreviewView(ft.Container):
         # Image display
         self._image_container = ft.Container(
             content=self._create_placeholder(),
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment.CENTER,
             expand=True,
         )
 
@@ -93,7 +118,7 @@ class PreviewView(ft.Container):
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=Spacing.MD,
             ),
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment.CENTER,
             visible=False,
         )
 
@@ -117,7 +142,7 @@ class PreviewView(ft.Container):
             content=ft.Column(
                 controls=[
                     ft.Icon(
-                        name=ft.Icons.IMAGE_OUTLINED,
+                        ft.Icons.IMAGE_OUTLINED,
                         size=64,
                         color=Colors.TEXT_DISABLED,
                     ),
@@ -127,7 +152,7 @@ class PreviewView(ft.Container):
                         color=Colors.TEXT_DISABLED,
                     ),
                     ft.ElevatedButton(
-                        text="Generate Illustration",
+                        content=ft.Text("Generate Illustration"),
                         icon=ft.Icons.AUTO_AWESOME,
                         on_click=lambda _: (
                             self.on_regenerate() if self.on_regenerate else None
@@ -141,7 +166,7 @@ class PreviewView(ft.Container):
             height=400,
             bgcolor=Colors.SURFACE_VARIANT,
             border_radius=BorderRadius.LG,
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment.CENTER,
         )
 
     def _build(self) -> None:
@@ -159,13 +184,13 @@ class PreviewView(ft.Container):
                             ],
                         ),
                         expand=True,
-                        alignment=ft.alignment.center,
+                        alignment=ft.Alignment.CENTER,
                     ),
                     # Page text
                     ft.Container(
                         content=self._page_text,
                         padding=Spacing.LG,
-                        alignment=ft.alignment.center,
+                        alignment=ft.Alignment.CENTER,
                     ),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -221,26 +246,26 @@ class PreviewView(ft.Container):
         actions = ft.Row(
             controls=[
                 ft.ElevatedButton(
-                    text="Regenerate Image",
+                    content=ft.Text("Regenerate Image"),
                     icon=ft.Icons.REFRESH,
                     on_click=lambda _: (
                         self.on_regenerate() if self.on_regenerate else None
                     ),
                 ),
                 ft.OutlinedButton(
-                    text="Edit Text",
+                    content=ft.Text("Edit Text"),
                     icon=ft.Icons.EDIT,
                     on_click=lambda _: self.on_edit() if self.on_edit else None,
                 ),
                 ft.OutlinedButton(
-                    text="Full Screen",
+                    content=ft.Text("Full Screen"),
                     icon=ft.Icons.FULLSCREEN,
                     on_click=lambda _: (
                         self.on_fullscreen() if self.on_fullscreen else None
                     ),
                 ),
                 ft.ElevatedButton(
-                    text="Export PDF",
+                    content=ft.Text("Export PDF"),
                     icon=ft.Icons.PICTURE_AS_PDF,
                     bgcolor=Colors.SECONDARY,
                     color=Colors.TEXT_ON_PRIMARY,
@@ -284,6 +309,7 @@ class PreviewView(ft.Container):
                 self.on_page_change(self._current_page)
             self._update_page_strip()
 
+    @_safe_update
     def _update_page_strip(self) -> None:
         """Update the page navigation strip."""
         self._page_strip.controls.clear()
@@ -308,7 +334,7 @@ class PreviewView(ft.Container):
                     if is_current
                     else ft.Border.all(1, Colors.BORDER)
                 ),
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment.CENTER,
                 on_click=lambda _e, page=i: self._handle_page_click(page),
             )
             self._page_strip.controls.append(page_button)

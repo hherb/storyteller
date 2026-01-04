@@ -34,7 +34,7 @@ class ProgressOverlay(ft.AlertDialog):
         self.on_cancel_callback = on_cancel
 
         self._icon = ft.Icon(
-            name=ft.Icons.AUTO_AWESOME,
+            ft.Icons.AUTO_AWESOME,
             size=48,
             color=Colors.PRIMARY,
         )
@@ -82,7 +82,7 @@ class ProgressOverlay(ft.AlertDialog):
 
         self.actions = [
             ft.TextButton(
-                text="Cancel",
+                content=ft.Text("Cancel"),
                 on_click=self._handle_cancel,
             ),
         ]
@@ -110,7 +110,7 @@ class ProgressOverlay(ft.AlertDialog):
             icon: The icon name to display.
         """
         self._message.value = message
-        self._icon.name = icon
+        self._icon.icon = icon
         self._progress_bar.value = None  # Indeterminate
         self._time_remaining.value = ""
         self.open = True
@@ -156,7 +156,7 @@ class ProgressOverlay(ft.AlertDialog):
         Args:
             message: The error message to display.
         """
-        self._icon.name = ft.Icons.ERROR_OUTLINE
+        self._icon.icon = ft.Icons.ERROR_OUTLINE
         self._icon.color = Colors.ERROR
         self._message.value = message
         self._message.color = Colors.ERROR
