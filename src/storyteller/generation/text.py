@@ -229,7 +229,8 @@ class OllamaClient:
         """
         client = self._get_client()
         response = client.list()  # type: ignore[attr-defined]
-        return [model["name"] for model in response.get("models", [])]
+        # Each model has a 'model' field containing the name (e.g., "phi4:latest")
+        return [model["model"] for model in response.get("models", [])]
 
 
 class MockTextGenerator:
