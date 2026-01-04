@@ -2,12 +2,14 @@
 
 Test FLUX image generation quality for children's book illustrations on Apple Silicon.
 
+**No Hugging Face token required** - uses pre-quantized community models by default.
+
 ## Requirements
 
 - **macOS with Apple Silicon** (M1/M2/M3/M4)
 - **16GB RAM minimum** (32GB recommended)
 - **Python 3.10+**
-- **~25GB free disk space** (for model download on first run)
+- **~6GB free disk space** (for 4-bit model download on first run)
 
 ## Setup
 
@@ -67,6 +69,19 @@ The test suite includes prompts across 4 illustration styles:
 | **schnell** | 2-4 | ~30-60s | Good | Quick previews, iteration |
 | **dev** | 20-25 | ~2-4min | Excellent | Final illustrations |
 
+## Quantization Options
+
+| Quantize | Size | HF Token | Quality | Default |
+|----------|------|----------|---------|---------|
+| **4-bit** | ~6GB | Not required | Good | ✓ |
+| **8-bit** | ~12GB | Required | Better | |
+
+Use `--quantize 8` for higher quality (requires HF token):
+
+```bash
+uv run python generate_test_images.py --test-suite --quantize 8
+```
+
 ## Expected Output
 
 Images are saved to `./generated_images/test_{model}_{timestamp}/`
@@ -95,10 +110,10 @@ The script uses the MFLUX Python API:
 ```python
 from mflux.models.flux.variants.txt2img.flux import Flux1
 
-# Load model with 8-bit quantization
+# Load model with 4-bit quantization (no HF token needed)
 flux = Flux1.from_name(
     model_name="schnell",  # or "dev"
-    quantize=8,
+    quantize=4,            # 4 = community models, 8 = requires HF token
 )
 
 # Generate image
@@ -124,12 +139,19 @@ uv sync
 ### Out of memory
 
 - Close other applications
-- The script uses 8-bit quantization by default to reduce memory
+- The script uses 4-bit quantization by default to reduce memory
 - 32GB RAM is recommended for comfortable usage
+
+### Need 8-bit quality (HF token required)
+
+1. Accept the license at https://huggingface.co/black-forest-labs/FLUX.1-schnell
+2. Create a token at https://huggingface.co/settings/tokens
+3. Run: `huggingface-cli login`
+4. Use: `--quantize 8`
 
 ### Slow generation
 
-- First run downloads the model (~12-23GB)
+- First run downloads the model (~6GB for 4-bit)
 - Subsequent runs should be 30-90 seconds per image
 - Use `schnell` model for faster iteration
 

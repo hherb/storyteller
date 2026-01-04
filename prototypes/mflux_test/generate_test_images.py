@@ -10,7 +10,8 @@ Requirements:
     - At least 16GB RAM (32GB recommended)
     - Python 3.10+
 
-First run will download the model (~12-23GB depending on variant).
+First run will download the model (~6GB for 4-bit quantized).
+Uses pre-quantized community models - no Hugging Face token required.
 """
 
 from __future__ import annotations
@@ -57,13 +58,22 @@ class GenerationConfig:
     steps: int = 4
     width: int = 1024
     height: int = 1024
-    quantize: int = 8
+    quantize: int = 4  # 4-bit uses pre-quantized community models (no HF token needed)
 
     @classmethod
-    def for_model(cls, model: str) -> GenerationConfig:
-        """Create a config with appropriate defaults for the given model."""
+    def for_model(cls, model: str, quantize: int = 4) -> GenerationConfig:
+        """
+        Create a config with appropriate defaults for the given model.
+
+        Args:
+            model: Model variant ("schnell" or "dev").
+            quantize: Quantization level (4 or 8). 4-bit uses community models.
+
+        Returns:
+            GenerationConfig with appropriate settings.
+        """
         steps = 4 if model == "schnell" else 20
-        return cls(model=model, steps=steps)
+        return cls(model=model, steps=steps, quantize=quantize)
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +359,7 @@ def run_test_suite(
     model: str = "schnell",
     categories: Optional[list[str]] = None,
     seed: int = 42,
+    quantize: int = 4,
 ) -> list[GenerationResult]:
     """
     Run the full test suite generating images for all prompts.
@@ -358,6 +369,7 @@ def run_test_suite(
         model: Model variant ("schnell" or "dev").
         categories: List of categories to test, or None for all.
         seed: Base seed for reproducibility.
+        quantize: Quantization level (4 or 8).
 
     Returns:
         List of GenerationResult objects for each image.
@@ -366,7 +378,7 @@ def run_test_suite(
     total_images = count_total_prompts(prompts)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    config = GenerationConfig.for_model(model)
+    config = GenerationConfig.for_model(model, quantize=quantize)
 
     print_suite_header(model, output_dir, total_images)
 
@@ -418,6 +430,7 @@ def generate_single(
     output_path: str,
     model: str = "schnell",
     seed: Optional[int] = None,
+    quantize: int = 4,
 ) -> None:
     """
     Generate a single image from a custom prompt.
@@ -427,16 +440,17 @@ def generate_single(
         output_path: Path to save the generated image.
         model: Model variant ("schnell" or "dev").
         seed: Random seed, or None for time-based seed.
+        quantize: Quantization level (4 or 8).
     """
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    config = GenerationConfig.for_model(model)
+    config = GenerationConfig.for_model(model, quantize=quantize)
     actual_seed = seed if seed is not None else int(time.time()) % 100000
 
     print("Generating image...")
     print(f"  Prompt: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
-    print(f"  Model: {model}")
+    print(f"  Model: {model} ({quantize}-bit)")
     print(f"  Seed: {actual_seed}")
 
     success, gen_time, error = generate_image(
@@ -545,6 +559,13 @@ Examples:
         action="store_true",
         help="List all test prompts without generating",
     )
+    parser.add_argument(
+        "--quantize",
+        type=int,
+        choices=[4, 8],
+        default=4,
+        help="Quantization level: 4 (smaller, no HF token) or 8 (larger, better quality)",
+    )
 
     return parser
 
@@ -569,6 +590,7 @@ def main() -> None:
             model=args.model,
             categories=args.categories,
             seed=args.seed or 42,
+            quantize=args.quantize,
         )
     elif args.prompt:
         if not args.output:
@@ -580,6 +602,7 @@ def main() -> None:
             output_path=args.output,
             model=args.model,
             seed=args.seed,
+            quantize=args.quantize,
         )
     else:
         parser.print_help()
