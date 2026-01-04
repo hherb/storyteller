@@ -143,6 +143,11 @@ class StoryEngine:
         }
 
     @property
+    def text_generator(self) -> TextGenerator:
+        """Get the text generator instance."""
+        return self._text_gen
+
+    @property
     def model_name(self) -> str:
         """Get the current LLM model name."""
         return self._text_gen.model_name
