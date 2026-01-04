@@ -62,6 +62,7 @@ class StorytellerApp:
             page: The Flet page to build the UI on.
         """
         self.page = page
+        self._ui_lock = threading.Lock()  # Lock for thread-safe UI updates
         self._setup_page()
         self._create_components()
         self._build_layout()
@@ -449,6 +450,7 @@ class StorytellerApp:
 
     def _handle_generate_image(self) -> None:
         """Handle generate illustration request."""
+        logger.info("Generate image button clicked")
         state = state_manager.state
 
         # Check if we have a story
@@ -536,14 +538,16 @@ class StorytellerApp:
             # Update config if needed
             self._image_generator.update_config(config)
 
-        # Progress callback
+        # Progress callback (thread-safe)
         def on_progress(progress: GenerationProgress) -> None:
             if self._generation_cancel_requested:
                 return
-            self._progress_overlay.update_progress(
-                progress.progress,
-                time_remaining=progress.status,
-            )
+            with self._ui_lock:
+                self._progress_overlay.update_progress(
+                    progress.progress,
+                    time_remaining=progress.status,
+                )
+                self.page.update()
 
         # Generate the image
         result = self._image_generator.generate(
@@ -583,42 +587,48 @@ class StorytellerApp:
             page_number: Page number that was generated.
             prompt: The prompt that was used.
         """
-        # Hide progress overlay
-        self._progress_overlay.hide()
-        state_manager.set_generation_status(GenerationStatus.IDLE)
+        logger.info(f"Generation complete: success={success}, page={page_number}")
 
-        if success and image_path and page_number:
-            # Update story with new illustration
-            state = state_manager.state
-            if state.current_story:
-                try:
-                    updated_story = update_page(
-                        state.current_story,
-                        page_number,
-                        illustration_path=image_path,
-                        illustration_prompt=prompt or "",
-                    )
-                    state_manager.set_story(updated_story)
-                    state_manager.mark_modified()
+        # Use lock for thread-safe UI updates
+        with self._ui_lock:
+            # Hide progress overlay
+            self._progress_overlay.hide()
+            state_manager.set_generation_status(GenerationStatus.IDLE)
 
-                    # Update preview
-                    self._preview_view.set_image(image_path)
-                    self._update_page_list()
+            if success and image_path and page_number:
+                # Update story with new illustration
+                state = state_manager.state
+                if state.current_story:
+                    try:
+                        updated_story = update_page(
+                            state.current_story,
+                            page_number,
+                            illustration_path=image_path,
+                            illustration_prompt=prompt or "",
+                        )
+                        state_manager.set_story(updated_story)
+                        state_manager.mark_modified()
 
-                    self._show_snackbar(
-                        f"Illustration generated for page {page_number}!",
-                        Colors.SUCCESS,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to update story: {e}")
-                    self._show_snackbar(f"Failed to save illustration: {e}", Colors.ERROR)
-        else:
-            self._show_snackbar(
-                f"Generation failed: {error or 'Unknown error'}",
-                Colors.ERROR,
-            )
+                        # Update preview
+                        self._preview_view.set_image(image_path)
+                        self._update_page_list()
 
-        self.page.update()
+                        self._show_snackbar(
+                            f"Illustration generated for page {page_number}!",
+                            Colors.SUCCESS,
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to update story: {e}")
+                        self._show_snackbar(
+                            f"Failed to save illustration: {e}", Colors.ERROR
+                        )
+            else:
+                self._show_snackbar(
+                    f"Generation failed: {error or 'Unknown error'}",
+                    Colors.ERROR,
+                )
+
+            self.page.update()
 
     def _show_snackbar(self, message: str, bgcolor: str | None = None) -> None:
         """Show a snackbar message.

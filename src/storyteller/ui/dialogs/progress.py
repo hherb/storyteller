@@ -92,8 +92,11 @@ class ProgressOverlay(ft.AlertDialog):
     def _handle_cancel(self, _e: ft.ControlEvent) -> None:
         """Handle cancel button click."""
         self.open = False
-        if self.page:
-            self.page.update()
+        try:
+            if self.page:
+                self.page.update()
+        except RuntimeError:
+            pass  # Control not mounted
 
         if self.on_cancel_callback:
             self.on_cancel_callback()
@@ -115,8 +118,11 @@ class ProgressOverlay(ft.AlertDialog):
         self._time_remaining.value = ""
         self.open = True
 
-        if self.page:
-            self.page.update()
+        try:
+            if self.page:
+                self.page.update()
+        except RuntimeError:
+            pass  # Control not mounted
 
     def update_progress(
         self,
@@ -141,14 +147,20 @@ class ProgressOverlay(ft.AlertDialog):
         else:
             self._time_remaining.value = ""
 
-        if self.page:
-            self.content.update()
+        try:
+            if self.page:
+                self.content.update()
+        except RuntimeError:
+            pass  # Control not mounted
 
     def hide(self) -> None:
         """Hide the progress overlay."""
         self.open = False
-        if self.page:
-            self.page.update()
+        try:
+            if self.page:
+                self.page.update()
+        except RuntimeError:
+            pass  # Control not mounted
 
     def show_error(self, message: str) -> None:
         """Show an error state.
@@ -163,5 +175,8 @@ class ProgressOverlay(ft.AlertDialog):
         self._progress_bar.visible = False
         self._time_remaining.value = ""
 
-        if self.page:
-            self.content.update()
+        try:
+            if self.page:
+                self.content.update()
+        except RuntimeError:
+            pass  # Control not mounted
