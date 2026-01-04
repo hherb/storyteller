@@ -4,435 +4,480 @@ This document defines the layout and interaction design for the Storyteller inte
 
 ## Overview
 
-The application uses a **three-panel layout** optimized for the story creation workflow:
+The application uses a **tabbed layout** where each major section gets full screen width for comfortable work:
 
 ```
-+------------------+------------------------+------------------+
-|                  |                        |                  |
-|   CONFIGURATION  |    STORY CREATION      |     PREVIEW      |
-|      PANEL       |        PANEL           |      PANEL       |
-|                  |                        |                  |
-|   (Left Rail)    |   (Center - Main)      |   (Right Panel)  |
-|                  |                        |                  |
-+------------------+------------------------+------------------+
-         250px            flexible                  350px
++------------------------------------------------------------------+
+|  STORYTELLER                    [New] [Open] [Save]    [Export]  |
++------------------------------------------------------------------+
+|  [ Settings ]    [ Create Story ]    [ Preview ]                 |
++==================================================================+
+|                                                                  |
+|                                                                  |
+|                    FULL-WIDTH TAB CONTENT                        |
+|                                                                  |
+|                                                                  |
++------------------------------------------------------------------+
+|  Status: Ready                              Page 3 of 10         |
++------------------------------------------------------------------+
 ```
 
 **Design Principles:**
-- Configuration is accessible but not distracting (collapsible left rail)
-- Story creation is the primary focus (largest area, center)
-- Preview provides constant visual feedback (right panel)
-- Responsive: panels can collapse on smaller screens
+- Each tab gets full width for proper workspace
+- Quick access toolbar for common actions (New, Open, Save, Export)
+- Status bar shows current state and page position
+- Seamless navigation between tabs while preserving state
+- Story creation is the default/primary tab
 
 ---
 
-## Panel 1: Configuration Panel (Left Rail)
+## Application Structure
 
-A collapsible left sidebar containing all settings and model configuration.
-
-### 1.1 Project Section
+### App Bar (Top)
 
 ```
-+----------------------------------+
-|  [+] New Story    [📁] Open      |
-+----------------------------------+
-|  Current Project:                |
-|  "Luna's Forest Adventure"       |
-|  Last saved: 2 min ago           |
-+----------------------------------+
++------------------------------------------------------------------+
+|  📖 STORYTELLER                                                  |
+|  "Luna's Forest Adventure"              [New] [Open] [Save] [⚙]  |
++------------------------------------------------------------------+
 ```
 
 **Components:**
-- **New Story Button**: Opens story creation dialog
-- **Open Button**: Opens file picker / recent stories list
-- **Project Info**: Current story title and save status
+- **App Logo/Title**: "Storyteller" branding
+- **Project Title**: Current story name (editable inline)
+- **Quick Actions**:
+  - New Story: Opens new story dialog
+  - Open: Opens file picker / recent stories
+  - Save: Saves current project
+  - Settings Gear: Opens settings tab
 
-### 1.2 Story Metadata Section
+### Tab Bar
 
 ```
-+----------------------------------+
-|  📖 STORY SETTINGS               |
-+----------------------------------+
-|  Title:                          |
-|  [Luna's Forest Adventure    ]   |
-|                                  |
-|  Author:                         |
-|  [Parent Name                ]   |
-|                                  |
-|  Target Age:                     |
-|  [▼ 5-8 years (Early Readers)]   |
-|                                  |
-|  Illustration Style:             |
-|  [▼ Watercolor               ]   |
-|                                  |
-|  Total Pages: [▼ 10]             |
-+----------------------------------+
++------------------------------------------------------------------+
+|  [⚙ Settings]     [✏️ Create Story]     [👁 Preview]              |
++------------------------------------------------------------------+
 ```
 
-**Fields:**
+Three main tabs with icons for quick recognition.
+
+### Status Bar (Bottom)
+
+```
++------------------------------------------------------------------+
+|  ✓ Saved 2 min ago    |    Ollama: phi4    |    Page 3 of 10     |
++------------------------------------------------------------------+
+```
+
+**Components:**
+- Save status indicator
+- Current LLM model
+- Page position (clickable to jump)
+- Generation status during AI operations
+
+---
+
+## Tab 1: Settings
+
+Full-width configuration panel organized in logical sections.
+
+### Layout
+
+```
++------------------------------------------------------------------+
+|  SETTINGS                                                        |
++------------------------------------------------------------------+
+|                                                                  |
+|  +---------------------------+    +---------------------------+  |
+|  | 📖 STORY SETTINGS         |    | 🤖 TEXT GENERATION        |  |
+|  +---------------------------+    +---------------------------+  |
+|  |                           |    |                           |  |
+|  |  Title:                   |    |  Model:                   |  |
+|  |  [Luna's Forest Adventure]|    |  [▼ phi4              ]   |  |
+|  |                           |    |  [Refresh Models]         |  |
+|  |  Author:                  |    |                           |  |
+|  |  [Parent Name           ] |    |  Temperature:   0.7       |  |
+|  |                           |    |  ──────────●─────────     |  |
+|  |  Target Age:              |    |  Precise      Creative    |  |
+|  |  [▼ 5-8 years           ] |    |                           |  |
+|  |                           |    |  Max Tokens:              |  |
+|  |  Total Pages:             |    |  [▼ Auto (recommended) ]  |  |
+|  |  [▼ 10                  ] |    |                           |  |
+|  |                           |    +---------------------------+  |
+|  +---------------------------+                                   |
+|                                                                  |
+|  +---------------------------+    +---------------------------+  |
+|  | 🎨 ILLUSTRATION STYLE     |    | 🖼 IMAGE GENERATION        |  |
+|  +---------------------------+    +---------------------------+  |
+|  |                           |    |                           |  |
+|  |  Style Preset:            |    |  Model:                   |  |
+|  |  ( ) Watercolor           |    |  (●) FLUX.1-schnell       |  |
+|  |  (●) Cartoon              |    |  ( ) FLUX.1-dev           |  |
+|  |  ( ) Storybook Classic    |    |                           |  |
+|  |  ( ) Modern Digital       |    |  Quantization:            |  |
+|  |  ( ) Pencil Sketch        |    |  (●) 4-bit (~6GB RAM)     |  |
+|  |                           |    |  ( ) 8-bit (~12GB RAM)    |  |
+|  |  [Preview Style]          |    |                           |  |
+|  |                           |    |  Steps: [4]               |  |
+|  |                           |    |  ────●───────────         |  |
+|  |                           |    |  Fast          Quality    |  |
+|  |                           |    |                           |  |
+|  |                           |    |  [ ] Auto-generate after  |  |
+|  |                           |    |      page text            |  |
+|  +---------------------------+    +---------------------------+  |
+|                                                                  |
++------------------------------------------------------------------+
+```
+
+### Settings Sections
+
+#### 1. Story Settings (Top Left)
 | Field | Type | Options |
 |-------|------|---------|
 | Title | Text input | Free text |
 | Author | Text input | Free text |
 | Target Age | Dropdown | "2-5" (Pre-readers), "5-8" (Early readers), "6-10" (Primary) |
-| Style | Dropdown | watercolor, cartoon, storybook_classic, modern_digital, pencil_sketch |
-| Total Pages | Dropdown/Spinner | 6, 8, 10, 12, 16 |
+| Total Pages | Dropdown | 6, 8, 10, 12, 16 |
 
-### 1.3 LLM Configuration Section
+#### 2. Text Generation (Top Right)
+| Field | Type | Options |
+|-------|------|---------|
+| Model | Dropdown | Available Ollama models (from `list_models()`) |
+| Refresh | Button | Re-fetches available models |
+| Temperature | Slider | 0.0 - 1.0 (default 0.7) |
+| Max Tokens | Dropdown | Auto, 256, 512, 1024, 2048 |
 
-```
-+----------------------------------+
-|  🤖 AI MODEL SETTINGS            |
-+----------------------------------+
-|  Text Model:                     |
-|  [▼ phi4                     ]   |
-|  [⟳ Refresh Models]              |
-|                                  |
-|  Temperature:     [0.7]          |
-|  ─────────●──────────            |
-|  Precise          Creative       |
-|                                  |
-|  Max Tokens:                     |
-|  [▼ Auto (recommended)       ]   |
-+----------------------------------+
-```
+#### 3. Illustration Style (Bottom Left)
+| Field | Type | Options |
+|-------|------|---------|
+| Style Preset | Radio | watercolor, cartoon, storybook_classic, modern_digital, pencil_sketch |
+| Preview | Button | Shows sample image in selected style |
 
-**Components:**
-- **Model Dropdown**: Lists available Ollama models (populated via `OllamaClient.list_models()`)
-- **Refresh Button**: Re-fetches available models
-- **Temperature Slider**: 0.0 to 1.0 (default 0.7)
-- **Max Tokens**: Auto, 256, 512, 1024, 2048
-
-### 1.4 Image Generation Section
-
-```
-+----------------------------------+
-|  🎨 IMAGE SETTINGS               |
-+----------------------------------+
-|  Model:                          |
-|  [▼ FLUX.1-schnell (fast)    ]   |
-|                                  |
-|  Quality:                        |
-|  [▼ 4-bit quantized (~6GB)   ]   |
-|                                  |
-|  Generation Steps: [4]           |
-|  ─────●──────────────            |
-|  Fast            Quality         |
-|                                  |
-|  [ ] Auto-generate illustrations |
-+----------------------------------+
-```
-
-**Components:**
-- **Model Selection**: schnell (fast), dev (quality)
-- **Quantization**: 4-bit, 8-bit
-- **Steps Slider**: 2-8 for schnell, 15-30 for dev
-- **Auto-generate Toggle**: Generate images automatically after page text
-
-### 1.5 Actions Section
-
-```
-+----------------------------------+
-|  💾 ACTIONS                      |
-+----------------------------------+
-|  [     Save Project      ]       |
-|  [     Export to PDF     ]       |
-|  [     Print Preview     ]       |
-+----------------------------------+
-```
+#### 4. Image Generation (Bottom Right)
+| Field | Type | Options |
+|-------|------|---------|
+| Model | Radio | schnell (fast), dev (quality) |
+| Quantization | Radio | 4-bit (~6GB), 8-bit (~12GB) |
+| Steps | Slider | 2-8 (schnell), 15-30 (dev) |
+| Auto-generate | Toggle | Generate images after page text |
 
 ---
 
-## Panel 2: Story Creation Panel (Center)
+## Tab 2: Create Story (Default Tab)
 
 The main interactive workspace for creating the story through conversation with the AI.
 
-### 2.1 Layout Structure
+### Layout
 
 ```
-+------------------------------------------------+
-|  STORY CREATION                    Page 3 of 10|
-+------------------------------------------------+
-|                                                |
-|  +------------------------------------------+  |
-|  |                                          |  |
-|  |         CONVERSATION HISTORY             |  |
-|  |         (Scrollable Area)                |  |
-|  |                                          |  |
-|  |  [AI] Let's create your story! What      |  |
-|  |       would you like your story to be    |  |
-|  |       about?                             |  |
-|  |                                          |  |
-|  |  [User] A brave little mouse who lives   |  |
-|  |         in a cozy treehouse              |  |
-|  |                                          |  |
-|  |  [AI] What a wonderful idea! Let me      |  |
-|  |       help you develop this...           |  |
-|  |                                          |  |
-|  +------------------------------------------+  |
-|                                                |
-+------------------------------------------------+
-|  +------------------------------------------+  |
-|  |  Type your ideas here...                 |  |
-|  |                                          |  |
-|  +------------------------------------------+  |
-|  [Send] [Generate Page Text] [Add Character]   |
-+------------------------------------------------+
++------------------------------------------------------------------+
+|  CREATE STORY                                                    |
++------------------------------------------------------------------+
+|                                                                  |
+|  +---------------------------------------------+  +-----------+  |
+|  |                                             |  | PAGES     |  |
+|  |  CONVERSATION                               |  +-----------+  |
+|  |                                             |  | [1] ✓     |  |
+|  |  ┌─────────────────────────────────────┐    |  | [2] ✓     |  |
+|  |  │ 🤖 Let's create your story! What    │    |  | [3] ●     |  |
+|  |  │    would you like it to be about?   │    |  | [4] ○     |  |
+|  |  └─────────────────────────────────────┘    |  | [5] ○     |  |
+|  |                                             |  | ...       |  |
+|  |  ┌─────────────────────────────────────┐    |  | [+] Add   |  |
+|  |  │ 👤 A brave little mouse who lives   │    |  +-----------+  |
+|  |  │    in a cozy treehouse in the forest│    |  |CHARACTERS |  |
+|  |  └─────────────────────────────────────┘    |  +-----------+  |
+|  |                                             |  | 🐭 Luna   |  |
+|  |  ┌─────────────────────────────────────┐    |  | 🦊 Felix  |  |
+|  |  │ 🤖 What a wonderful idea! Luna the  │    |  | [+] Add   |  |
+|  |  │    mouse sounds like a great hero..│    |  +-----------+  |
+|  |  └─────────────────────────────────────┘    |                 |
+|  |                                             |                 |
+|  +---------------------------------------------+                 |
+|                                                                  |
+|  +--------------------------------------------------------------+|
+|  | PAGE 3 CONTENT                                     [Expand]  ||
+|  +--------------------------------------------------------------+|
+|  | Text: Luna scampered through the forest, her tiny paws       ||
+|  |       crunching on fallen leaves...                  [Edit]  ||
+|  | Prompt: A small brown mouse walking through sunlit   [Edit]  ||
+|  |         forest, autumn leaves, watercolor style...           ||
+|  +--------------------------------------------------------------+|
+|                                                                  |
+|  +--------------------------------------------------------------+|
+|  | Type your message...                                         ||
+|  |                                                              ||
+|  +--------------------------------------------------------------+|
+|  [Send]  [Generate Page Text]  [Generate Illustration]  [Ideas] |
+|                                                                  |
++------------------------------------------------------------------+
 ```
 
-### 2.2 Conversation Area
+### Main Components
 
-**Features:**
+#### Conversation Panel (Left, ~70% width)
 - Scrollable message history
-- Clear visual distinction between AI and user messages
-- Messages grouped by story phase (brainstorming, character, pages)
+- Clear bubbles for AI (left-aligned) and User (right-aligned)
 - Typing indicator during AI generation
 - Markdown rendering for formatted responses
 
-**Message Types:**
-```python
-@dataclass
-class ConversationMessage:
-    role: Literal["user", "assistant", "system"]
-    content: str
-    timestamp: datetime
-    phase: Literal["brainstorm", "characters", "page_writing", "revision"]
+**Message Bubble Styling:**
+```
+AI Messages:     User Messages:
+┌──────────┐     ┌──────────┐
+│ 🤖 ...   │     │    ... 👤│
+└──────────┘     └──────────┘
+  Light gray       Light blue
+  Left-aligned     Right-aligned
 ```
 
-### 2.3 Input Area
+#### Side Panel (Right, ~30% width)
 
-**Components:**
-- **Text Input**: Multi-line text area for user input
-- **Send Button**: Submit message for AI response
-- **Quick Actions**:
+**Pages Section:**
+- Vertical list of page numbers
+- Status indicators:
+  - ✓ = Has text and illustration
+  - ◐ = Has text only
+  - ○ = Empty page
+  - ● = Currently selected
+- Click to navigate
+- [+] Add Page button
+
+**Characters Section:**
+- List of defined characters with icons
+- Click to view/edit details
+- [+] Add Character button
+
+#### Current Page Panel (Bottom, collapsible)
+- Shows current page text (editable)
+- Shows illustration prompt (editable)
+- Expand button for full editing mode
+
+#### Input Area (Bottom)
+- Multi-line text input
+- Action buttons:
+  - **Send**: Submit to AI conversation
   - **Generate Page Text**: Create text for current page
-  - **Add Character**: Open character definition dialog
-  - **Suggest Ideas**: Get AI suggestions for next steps
-
-### 2.4 Page Navigation Bar
-
-```
-+------------------------------------------------+
-|  ◀ Prev |  Page [3] of [10]  | Next ▶  | [+]  |
-+------------------------------------------------+
-```
-
-- Navigate between pages
-- Current page indicator
-- Add new page button
-- Visual indicator for pages with/without text and illustrations
-
-### 2.5 Current Page Editor
-
-When in page-editing mode, displays editable page content:
-
-```
-+------------------------------------------------+
-|  PAGE 3 TEXT                          [Edit]   |
-+------------------------------------------------+
-|  Luna scampered through the forest, her tiny   |
-|  paws crunching on fallen leaves. The morning  |
-|  sun painted golden stripes through the trees. |
-+------------------------------------------------+
-|  ILLUSTRATION PROMPT                  [Edit]   |
-+------------------------------------------------+
-|  A small brown mouse with a red scarf walking  |
-|  through a sunlit forest, autumn leaves on the |
-|  ground, watercolor style, children's book...  |
-+------------------------------------------------+
-|  [Regenerate Text] [Generate Illustration]     |
-+------------------------------------------------+
-```
+  - **Generate Illustration**: Create image for current page
+  - **Ideas**: Get AI suggestions
 
 ---
 
-## Panel 3: Preview Panel (Right)
+## Tab 3: Preview
 
-Visual preview of the story being created.
+Visual preview of the complete story with all illustrations.
 
-### 3.1 Layout Structure
+### Layout
 
 ```
-+----------------------------------+
-|  PREVIEW               [⛶ Full] |
-+----------------------------------+
-|                                  |
-|  +----------------------------+  |
-|  |                            |  |
-|  |    CURRENT PAGE IMAGE      |  |
-|  |        (Large View)        |  |
-|  |                            |  |
-|  |      [Generating...]       |  |
-|  |        ████████░░ 80%      |  |
-|  |                            |  |
-|  +----------------------------+  |
-|                                  |
-|  "Luna scampered through the     |
-|   forest, her tiny paws..."      |
-|                                  |
-+----------------------------------+
-|  PAGE THUMBNAILS                 |
-+----------------------------------+
-|  [1] [2] [3*] [4] [5] [6] ...   |
-|   ✓   ✓   ●    ○   ○   ○        |
-+----------------------------------+
-|  CHARACTERS                      |
-+----------------------------------+
-|  [🐭] Luna   [🦊] Felix          |
-|  [+] Add Character               |
-+----------------------------------+
++------------------------------------------------------------------+
+|  PREVIEW                                                         |
++------------------------------------------------------------------+
+|                                                                  |
+|  +--------------------------------------------------------------+|
+|  |                                                              ||
+|  |                                                              ||
+|  |           +--------------------------------+                 ||
+|  |           |                                |                 ||
+|  |           |                                |                 ||
+|  |           |      PAGE ILLUSTRATION         |                 ||
+|  |           |         (Large View)           |                 ||
+|  |           |                                |                 ||
+|  |           |                                |                 ||
+|  |           +--------------------------------+                 ||
+|  |                                                              ||
+|  |     Luna scampered through the forest, her tiny paws         ||
+|  |     crunching on fallen leaves. The morning sun painted      ||
+|  |     golden stripes through the trees.                        ||
+|  |                                                              ||
+|  +--------------------------------------------------------------+|
+|                                                                  |
+|  +--------------------------------------------------------------+|
+|  |  PAGE NAVIGATION                                             ||
+|  |  [◀ Prev]  [1] [2] [3] [4] [5] [6] [7] [8] [9] [10] [Next ▶] ||
+|  |             ✓   ✓   ●   ◐   ○   ○   ○   ○   ○   ○            ||
+|  +--------------------------------------------------------------+|
+|                                                                  |
+|  [Regenerate Image]  [Edit Text]  [Full Screen]  [Export PDF]   |
+|                                                                  |
++------------------------------------------------------------------+
 ```
 
-### 3.2 Current Page Preview
+### Components
 
-**Features:**
-- Large image preview (current page illustration)
-- Page text below image (as it would appear in book)
-- Generation progress bar during image creation
-- Placeholder for pages without illustrations
-- Click to expand to full-screen view
+#### Main Preview Area
+- Large illustration display (centered)
+- Page text below illustration
+- Mimics final book layout
 
-**States:**
+**Image States:**
 | State | Display |
 |-------|---------|
 | No illustration | Placeholder with "Generate" button |
-| Generating | Progress bar + estimated time |
+| Generating | Progress bar + spinner + "Generating..." |
 | Complete | Full illustration |
 | Error | Error message + "Retry" button |
 
-### 3.3 Page Thumbnail Strip
+#### Page Navigation Strip
+- Horizontal row of page number buttons
+- Status indicators below each number
+- Previous/Next buttons at ends
+- Current page highlighted
 
-**Features:**
-- Horizontal scrollable thumbnail strip
-- Visual indicators:
-  - ✓ = Has text and illustration
-  - ◐ = Has text, no illustration
-  - ○ = Empty page
-  - ● = Currently selected
-- Click to navigate to page
-- Drag to reorder pages
+#### Action Buttons
+- **Regenerate Image**: Create new illustration
+- **Edit Text**: Jump to Create tab with this page
+- **Full Screen**: Expand to full-screen preview mode
+- **Export PDF**: Open export dialog
 
-### 3.4 Characters Panel
+### Full-Screen Preview Mode
 
-**Features:**
-- Grid/list of defined characters
-- Character avatar (generated or placeholder icon)
-- Click to view/edit character details
-- Quick-add button for new characters
-
-**Character Card:**
 ```
-+------------------+
-| [🐭 Avatar]      |
-| Luna             |
-| Brave little     |
-| mouse            |
-| [Edit] [Delete]  |
-+------------------+
++------------------------------------------------------------------+
+|                                              [ESC to exit]   [X] |
++------------------------------------------------------------------+
+|                                                                  |
+|                                                                  |
+|                                                                  |
+|              +------------------------------------+               |
+|              |                                    |               |
+|              |                                    |               |
+|              |        FULL SIZE IMAGE             |               |
+|              |                                    |               |
+|              |                                    |               |
+|              +------------------------------------+               |
+|                                                                  |
+|              Luna scampered through the forest,                  |
+|              her tiny paws crunching on fallen leaves.           |
+|                                                                  |
+|                                                                  |
+|  [◀ Previous]                                        [Next ▶]    |
+|                           Page 3 of 10                           |
++------------------------------------------------------------------+
 ```
 
 ---
 
-## Dialogs and Overlays
+## Dialogs
 
 ### New Story Dialog
 
 ```
-+------------------------------------------+
-|  Create New Story                   [X]  |
-+------------------------------------------+
-|                                          |
-|  Story Title:                            |
-|  [                                   ]   |
-|                                          |
-|  Your Name (Author):                     |
-|  [                                   ]   |
-|                                          |
-|  Target Age Group:                       |
-|  ( ) Pre-readers (ages 2-5)              |
-|  (●) Early readers (ages 5-8)            |
-|  ( ) Primary school (ages 6-10)          |
-|                                          |
-|  Illustration Style:                     |
-|  [▼ Watercolor                       ]   |
-|                                          |
-|  Number of Pages:                        |
-|  [▼ 10                               ]   |
-|                                          |
-|  [Cancel]                  [Create Story]|
-+------------------------------------------+
++----------------------------------------------------------+
+|  Create New Story                                    [X]  |
++----------------------------------------------------------+
+|                                                          |
+|  What would you like to call your story?                 |
+|  +----------------------------------------------------+  |
+|  |                                                    |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Who is the author?                                      |
+|  +----------------------------------------------------+  |
+|  |                                                    |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Who will read this story?                               |
+|  +----------------------------------------------------+  |
+|  | ( ) Toddlers & Pre-readers (ages 2-5)              |  |
+|  | (●) Early Readers (ages 5-8)                       |  |
+|  | ( ) Primary School (ages 6-10)                     |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Illustration style:                                     |
+|  +----------------------------------------------------+  |
+|  | [▼ Watercolor - Soft, dreamy, pastel colors    ]   |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  How many pages?                                         |
+|  +----------------------------------------------------+  |
+|  | [▼ 10 pages                                    ]   |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|        [Cancel]                        [Create Story]    |
++----------------------------------------------------------+
 ```
 
 ### Character Definition Dialog
 
 ```
-+------------------------------------------+
-|  Define Character                   [X]  |
-+------------------------------------------+
-|                                          |
-|  Character Name:                         |
-|  [Luna                               ]   |
-|                                          |
-|  Description:                            |
-|  [A small, brave field mouse who      ]  |
-|  [dreams of adventure. She wears a    ]  |
-|  [tiny red scarf her grandmother made ]  |
-|  [                                    ]  |
-|                                          |
-|  [Extract Visual Traits with AI]         |
-|                                          |
-|  Visual Traits (for consistent images):  |
-|  [small brown mouse] [x]                 |
-|  [red knitted scarf] [x]                 |
-|  [bright curious eyes] [x]               |
-|  [+ Add Trait]                           |
-|                                          |
-|  [Cancel]                         [Save] |
-+------------------------------------------+
++----------------------------------------------------------+
+|  Define Character                                    [X]  |
++----------------------------------------------------------+
+|                                                          |
+|  Character Name:                                         |
+|  +----------------------------------------------------+  |
+|  | Luna                                               |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Description (who are they? what are they like?):        |
+|  +----------------------------------------------------+  |
+|  | A small, brave field mouse who dreams of adventure.|  |
+|  | She wears a tiny red scarf her grandmother made.   |  |
+|  | She's curious and kind, always helping friends.    |  |
+|  |                                                    |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  [✨ Extract Visual Traits with AI]                      |
+|                                                          |
+|  Visual Traits (for consistent illustrations):           |
+|  +----------------------------------------------------+  |
+|  | [small brown mouse        ] [×]                    |  |
+|  | [red knitted scarf        ] [×]                    |  |
+|  | [bright curious eyes      ] [×]                    |  |
+|  | [+ Add trait...]                                   |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|        [Cancel]                              [Save]      |
++----------------------------------------------------------+
 ```
 
-### Full-Screen Preview
+### Export Dialog
 
 ```
-+--------------------------------------------------+
-|  Luna's Forest Adventure - Page 3          [X]   |
-+--------------------------------------------------+
-|                                                  |
-|                                                  |
-|          +---------------------------+           |
-|          |                           |           |
-|          |                           |           |
-|          |     FULL SIZE IMAGE       |           |
-|          |                           |           |
-|          |                           |           |
-|          +---------------------------+           |
-|                                                  |
-|     Luna scampered through the forest, her       |
-|     tiny paws crunching on fallen leaves.        |
-|                                                  |
-|  [◀ Previous]                       [Next ▶]     |
-|                                                  |
-+--------------------------------------------------+
++----------------------------------------------------------+
+|  Export Story                                        [X]  |
++----------------------------------------------------------+
+|                                                          |
+|  Export Format:                                          |
+|  ( ) PDF - Print Ready (high resolution)                 |
+|  (●) PDF - Screen (smaller file size)                    |
+|  ( ) Images Only (PNG folder)                            |
+|                                                          |
+|  Page Size:                                              |
+|  [▼ A4 Landscape                                     ]   |
+|                                                          |
+|  Include:                                                |
+|  [✓] Cover page with title                               |
+|  [✓] Page numbers                                        |
+|  [ ] Author bio on back                                  |
+|                                                          |
+|  Export Location:                                        |
+|  +--------------------------------------------------+    |
+|  | ~/Documents/Stories/luna_adventure.pdf           |    |
+|  +--------------------------------------------------+    |
+|  [Browse...]                                             |
+|                                                          |
+|        [Cancel]                             [Export]     |
++----------------------------------------------------------+
 ```
 
 ### Generation Progress Overlay
 
 ```
-+------------------------------------------+
-|  Generating Illustration                 |
-+------------------------------------------+
-|                                          |
-|            🎨                            |
-|                                          |
-|    Creating illustration for Page 3...   |
-|                                          |
-|    ████████████████░░░░░░░░  67%         |
-|                                          |
-|    Estimated time remaining: 45 seconds  |
-|                                          |
-|    [Cancel]                              |
-|                                          |
-+------------------------------------------+
++----------------------------------------------------------+
+|                                                          |
+|                    🎨 Generating...                       |
+|                                                          |
+|         Creating illustration for Page 3                 |
+|                                                          |
+|         ████████████████░░░░░░░░░░  67%                  |
+|                                                          |
+|         Estimated time remaining: 45 seconds             |
+|                                                          |
+|                      [Cancel]                            |
+|                                                          |
++----------------------------------------------------------+
 ```
 
 ---
@@ -440,47 +485,50 @@ Visual preview of the story being created.
 ## Component Hierarchy
 
 ```
-App (main.py)
+App (app.py)
 ├── AppBar
-│   ├── Title
-│   ├── ProjectName
-│   └── MenuButton
+│   ├── Logo
+│   ├── ProjectTitle (editable)
+│   └── QuickActions (New, Open, Save, Settings)
 │
-├── NavigationRail (Left - Collapsible)
-│   ├── ProjectSection
-│   ├── StoryMetadataSection
-│   ├── LLMConfigSection
-│   ├── ImageConfigSection
-│   └── ActionsSection
+├── TabBar
+│   ├── SettingsTab
+│   ├── CreateTab (default)
+│   └── PreviewTab
 │
-├── MainContent (Center)
-│   ├── ConversationView
-│   │   ├── MessageList
-│   │   │   └── MessageBubble (multiple)
-│   │   └── TypingIndicator
+├── TabContent
 │   │
-│   ├── InputArea
-│   │   ├── TextInput
-│   │   └── ActionButtons
+│   ├── SettingsView (when Settings tab active)
+│   │   ├── StorySettingsCard
+│   │   ├── TextGenerationCard
+│   │   ├── IllustrationStyleCard
+│   │   └── ImageGenerationCard
 │   │
-│   ├── PageNavigator
-│   │   └── PageIndicator
+│   ├── CreateView (when Create tab active)
+│   │   ├── ConversationPanel
+│   │   │   ├── MessageList
+│   │   │   │   └── MessageBubble (multiple)
+│   │   │   └── TypingIndicator
+│   │   ├── SidePanel
+│   │   │   ├── PageList
+│   │   │   └── CharacterList
+│   │   ├── CurrentPagePanel (collapsible)
+│   │   │   ├── PageTextEditor
+│   │   │   └── PromptEditor
+│   │   └── InputArea
+│   │       ├── TextInput
+│   │       └── ActionButtons
 │   │
-│   └── PageEditor
-│       ├── TextEditor
-│       └── PromptEditor
+│   └── PreviewView (when Preview tab active)
+│       ├── IllustrationDisplay
+│       ├── PageTextDisplay
+│       ├── PageNavigationStrip
+│       └── ActionButtons
 │
-└── PreviewPanel (Right)
-    ├── CurrentPagePreview
-    │   ├── ImageView
-    │   ├── ProgressBar
-    │   └── PageText
-    │
-    ├── ThumbnailStrip
-    │   └── PageThumbnail (multiple)
-    │
-    └── CharacterPanel
-        └── CharacterCard (multiple)
+└── StatusBar
+    ├── SaveStatus
+    ├── ModelIndicator
+    └── PageIndicator
 ```
 
 ---
@@ -490,28 +538,32 @@ App (main.py)
 ```
 src/storyteller/ui/
 ├── __init__.py           # Public exports
-├── app.py                # Main application entry, layout composition
+├── app.py                # Main application entry, tab container
 ├── state.py              # Application state management
 │
-├── panels/
+├── views/
 │   ├── __init__.py
-│   ├── config_panel.py   # Left configuration rail
-│   ├── creation_panel.py # Center story creation
-│   └── preview_panel.py  # Right preview panel
+│   ├── settings.py       # Settings tab content
+│   ├── create.py         # Create Story tab content
+│   └── preview.py        # Preview tab content
 │
 ├── components/
 │   ├── __init__.py
+│   ├── app_bar.py        # Top application bar
+│   ├── status_bar.py     # Bottom status bar
 │   ├── message_bubble.py # Chat message component
-│   ├── page_thumbnail.py # Page thumbnail in strip
-│   ├── character_card.py # Character display card
-│   ├── image_preview.py  # Image with loading states
-│   └── progress_bar.py   # Generation progress
+│   ├── page_list.py      # Page navigation list
+│   ├── character_list.py # Character list component
+│   ├── page_editor.py    # Page text/prompt editor
+│   ├── image_display.py  # Image with loading states
+│   └── settings_card.py  # Settings section card
 │
 ├── dialogs/
 │   ├── __init__.py
 │   ├── new_story.py      # New story creation dialog
 │   ├── character.py      # Character definition dialog
-│   └── export.py         # Export options dialog
+│   ├── export.py         # Export options dialog
+│   └── progress.py       # Generation progress overlay
 │
 └── theme.py              # Colors, typography, styling
 ```
@@ -530,14 +582,15 @@ class AppState:
     # Current story
     current_story: Story | None
     is_modified: bool
+    project_path: Path | None
 
     # Engine and conversation
     engine: StoryEngine | None
     conversation_messages: list[ConversationMessage]
 
     # UI state
+    active_tab: Literal["settings", "create", "preview"]
     current_page_number: int
-    selected_panel: Literal["config", "creation", "preview"]
     is_generating_text: bool
     is_generating_image: bool
     generation_progress: float  # 0.0 to 1.0
@@ -551,7 +604,7 @@ class AppState:
 ```python
 @dataclass
 class AppConfig:
-    """User configuration."""
+    """User configuration - persisted between sessions."""
 
     # LLM settings
     llm_model: str = "phi4"
@@ -563,11 +616,25 @@ class AppConfig:
     image_quantization: str = "4-bit"
     image_steps: int = 4
     auto_generate_images: bool = False
-
-    # UI preferences
-    left_panel_collapsed: bool = False
-    right_panel_collapsed: bool = False
 ```
+
+---
+
+## Tab Navigation Behavior
+
+### State Preservation
+- All tabs maintain their state when switching
+- Conversation history persists across tab switches
+- Current page selection syncs between Create and Preview tabs
+
+### Tab Indicators
+- Badge on Create tab if there are unsaved changes
+- Badge on Preview tab if illustrations are missing
+
+### Auto-Navigation
+- After generating page text: stay on Create tab
+- After generating illustration: optionally jump to Preview
+- On "Edit Text" from Preview: jump to Create tab
 
 ---
 
@@ -576,78 +643,40 @@ class AppConfig:
 ### Story Creation Flow
 
 ```
-User Input → StoryEngine.process_user_input()
-                    ↓
-           OllamaClient.chat()
-                    ↓
-           AI Response → Update conversation_messages
-                    ↓
-           Update UI (ConversationView)
+User types message → InputArea
+         ↓
+    [Send] clicked
+         ↓
+StoryEngine.process_user_input()
+         ↓
+    OllamaClient.chat()
+         ↓
+AI Response → Update conversation_messages
+         ↓
+Update MessageList display
 ```
 
 ### Page Generation Flow
 
 ```
-User clicks "Generate Page Text"
-            ↓
-StoryEngine.generate_page_text()
-            ↓
+[Generate Page Text] clicked
+         ↓
+StoryEngine.generate_page_text(current_page)
+         ↓
 Update story.pages[current]
-            ↓
-Update PageEditor display
-            ↓
-(If auto_generate_images)
-            ↓
-MFLUX.generate_image(illustration_prompt)
-            ↓
+         ↓
+Update CurrentPagePanel
+         ↓
+    (If auto_generate_images)
+         ↓
+Show progress overlay
+         ↓
+MFLUX.generate_image(prompt)
+         ↓
 Save to project_path/pages/page_XX.png
-            ↓
-Update PreviewPanel
+         ↓
+Update Preview tab
 ```
-
-### Save/Load Flow
-
-```
-User clicks "Save"
-      ↓
-save_story(current_story, project_path)
-      ↓
-Update is_modified = False
-      ↓
-Show save confirmation
-
-User clicks "Open"
-      ↓
-Show list_stories() results
-      ↓
-User selects story
-      ↓
-load_story(selected_path)
-      ↓
-Initialize StoryEngine with loaded story
-      ↓
-Populate all UI panels
-```
-
----
-
-## Responsive Behavior
-
-### Large Screen (> 1400px)
-- All three panels visible
-- Left rail: 250px
-- Right panel: 350px
-- Center: flexible
-
-### Medium Screen (1000px - 1400px)
-- Left rail collapsed to icons only (60px)
-- Right panel: 300px
-- Center: flexible
-
-### Small Screen (< 1000px)
-- Tab-based navigation between panels
-- Only one panel visible at a time
-- Bottom navigation bar
 
 ---
 
@@ -661,83 +690,105 @@ Populate all UI panels
 | `Cmd+E` | Export to PDF |
 | `Cmd+Enter` | Send message / Generate |
 | `Cmd+Left/Right` | Previous/Next Page |
-| `Cmd+1/2/3` | Focus Config/Creation/Preview panel |
+| `Cmd+1` | Switch to Settings tab |
+| `Cmd+2` | Switch to Create tab |
+| `Cmd+3` | Switch to Preview tab |
 | `Escape` | Close dialog / Cancel generation |
 
 ---
 
 ## Implementation Priority
 
-### Phase 1: Core Layout
-1. Main app shell with three-panel layout
-2. Basic navigation rail (collapsible)
-3. Placeholder content in each panel
+### Phase 1: Core Shell
+1. Main app with tab navigation
+2. App bar with project title
+3. Status bar with indicators
+4. Placeholder content in each tab
 
-### Phase 2: Configuration Panel
-1. Story metadata form
-2. LLM model selection (with refresh)
-3. Image generation settings
+### Phase 2: Settings Tab
+1. Four settings cards layout
+2. Story settings form
+3. LLM model selection (with refresh)
+4. Image generation settings
+5. Style preset selection
 
-### Phase 3: Story Creation Panel
-1. Conversation view with message display
-2. Input area with send button
-3. Basic page navigation
+### Phase 3: Create Tab
+1. Conversation panel with message bubbles
+2. Input area with action buttons
+3. Side panel (pages + characters lists)
+4. Current page panel (collapsible)
 
-### Phase 4: Preview Panel
-1. Current page image display
-2. Thumbnail strip
-3. Character cards
+### Phase 4: Preview Tab
+1. Large image display with states
+2. Page text display
+3. Page navigation strip
+4. Action buttons
 
-### Phase 5: Integration
+### Phase 5: Dialogs
+1. New story dialog
+2. Character definition dialog
+3. Export dialog
+4. Progress overlay
+
+### Phase 6: Integration
 1. Connect to StoryEngine
-2. Real-time updates during generation
+2. Real-time generation updates
 3. Save/load functionality
+4. Auto-save
 
-### Phase 6: Polish
-1. Progress indicators
+### Phase 7: Polish
+1. Keyboard shortcuts
 2. Error handling UI
-3. Keyboard shortcuts
-4. Responsive behavior
+3. Animations and transitions
+4. Persistence of user preferences
 
 ---
 
 ## Technical Notes
 
-### Flet-Specific Considerations
-
-1. **Layout**: Use `ft.Row` and `ft.Column` for the three-panel layout
-2. **State Updates**: Use `page.update()` for UI refreshes
-3. **Async**: Use `asyncio` for long-running operations
-4. **Theming**: Use `ft.Theme` for consistent styling
-5. **Dialogs**: Use `ft.AlertDialog` for modal dialogs
-
-### Example App Structure
+### Flet Tab Implementation
 
 ```python
 import flet as ft
 
 def main(page: ft.Page):
     page.title = "Storyteller"
-    page.window.width = 1400
-    page.window.height = 900
+    page.window.width = 1200
+    page.window.height = 800
 
-    # Create panels
-    config_panel = ConfigPanel()
-    creation_panel = CreationPanel()
-    preview_panel = PreviewPanel()
+    # Create tab content views
+    settings_view = SettingsView()
+    create_view = CreateView()
+    preview_view = PreviewView()
+
+    # Tab container
+    tabs = ft.Tabs(
+        selected_index=1,  # Start on Create tab
+        tabs=[
+            ft.Tab(
+                text="Settings",
+                icon=ft.icons.SETTINGS,
+                content=settings_view,
+            ),
+            ft.Tab(
+                text="Create Story",
+                icon=ft.icons.EDIT,
+                content=create_view,
+            ),
+            ft.Tab(
+                text="Preview",
+                icon=ft.icons.VISIBILITY,
+                content=preview_view,
+            ),
+        ],
+        expand=True,
+    )
 
     # Main layout
     page.add(
-        ft.Row(
-            controls=[
-                config_panel,       # Left rail
-                ft.VerticalDivider(),
-                creation_panel,     # Center (expand=True)
-                ft.VerticalDivider(),
-                preview_panel,      # Right panel
-            ],
-            expand=True,
-        )
+        AppBar(),
+        tabs,
+        StatusBar(),
     )
 
 ft.app(target=main)
@@ -747,11 +798,11 @@ ft.app(target=main)
 
 ## Next Steps
 
-1. Create `src/storyteller/ui/app.py` with basic shell
-2. Implement state management in `state.py`
-3. Build configuration panel components
-4. Implement conversation view
-5. Add preview panel with image display
-6. Connect all panels to StoryEngine
-7. Add persistence integration
-8. Implement progress indicators and error handling
+1. Create `src/storyteller/ui/app.py` with tab shell
+2. Implement `state.py` for state management
+3. Build Settings tab with four cards
+4. Implement Create tab conversation UI
+5. Add Preview tab with image display
+6. Create dialog components
+7. Connect to StoryEngine
+8. Add keyboard shortcuts and polish
