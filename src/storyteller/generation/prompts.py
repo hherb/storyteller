@@ -393,3 +393,132 @@ def calculate_story_structure(page_count: int) -> dict[str, int]:
             "middle_end": ending_start - 1,
             "ending_start": ending_start,
         }
+
+
+# =============================================================================
+# Illustration Prompt Generation
+# =============================================================================
+
+
+def build_illustration_prompt_simple(
+    page_text: str,
+    characters: list[tuple[str, str, list[str]]] | None = None,
+    style: str = "watercolor",
+    setting: str = "",
+    mood: str = "warm and friendly",
+) -> str:
+    """
+    Build an illustration prompt directly from page content (no LLM needed).
+
+    This function creates a detailed prompt for image generation by combining
+    the page text, character visual traits, style, and safety modifiers.
+
+    Args:
+        page_text: The text content of the page.
+        characters: List of (name, description, visual_traits) tuples for
+            characters appearing on this page. Can be None for no characters.
+        style: The illustration style preset name.
+        setting: Optional setting description (e.g., "a sunny meadow").
+        mood: The mood/atmosphere (e.g., "warm and friendly", "exciting").
+
+    Returns:
+        A complete prompt ready for image generation.
+
+    Example:
+        >>> build_illustration_prompt_simple(
+        ...     page_text="Luna hopped through the garden, smelling the flowers.",
+        ...     characters=[("Luna", "A brave mouse", ["small brown mouse", "red scarf"])],
+        ...     style="watercolor",
+        ... )
+    """
+    from storyteller.generation.styles import apply_style
+
+    # Start with the scene description based on page text
+    # Strip the text to use as scene context
+    scene = page_text.strip()
+    if len(scene) > 200:
+        scene = scene[:197] + "..."
+
+    parts = [f"Scene: {scene}"]
+
+    # Add character visual traits
+    if characters:
+        char_descriptions = []
+        for name, _desc, traits in characters:
+            if traits:
+                traits_str = ", ".join(traits)
+                char_descriptions.append(f"{name} ({traits_str})")
+            else:
+                char_descriptions.append(name)
+        if char_descriptions:
+            parts.append(f"Characters: {', '.join(char_descriptions)}")
+
+    # Add setting if provided
+    if setting:
+        parts.append(f"Setting: {setting}")
+
+    # Add mood
+    parts.append(f"Mood: {mood}")
+
+    # Combine into base prompt
+    base_prompt = ". ".join(parts)
+
+    # Apply style and safety modifiers
+    return apply_style(base_prompt, style)
+
+
+def find_characters_in_page(
+    page_text: str,
+    all_characters: list[tuple[str, str, tuple[str, ...]]],
+) -> list[tuple[str, str, list[str]]]:
+    """
+    Find which characters appear in a page based on name matching.
+
+    Args:
+        page_text: The text content of the page.
+        all_characters: List of (name, description, visual_traits) tuples
+            for all characters in the story.
+
+    Returns:
+        List of characters that appear in this page.
+    """
+    text_lower = page_text.lower()
+    appearing = []
+
+    for name, description, traits in all_characters:
+        if name.lower() in text_lower:
+            appearing.append((name, description, list(traits)))
+
+    return appearing
+
+
+def build_illustration_prompt_for_page(
+    page_text: str,
+    all_characters: list[tuple[str, str, tuple[str, ...]]],
+    style: str = "watercolor",
+    setting: str = "",
+) -> str:
+    """
+    Build an illustration prompt for a story page.
+
+    This is a convenience function that finds characters in the page
+    and builds the prompt.
+
+    Args:
+        page_text: The text content of the page.
+        all_characters: All characters in the story as (name, desc, traits) tuples.
+        style: The illustration style preset name.
+        setting: Optional setting description.
+
+    Returns:
+        A complete prompt ready for image generation.
+    """
+    # Find which characters appear on this page
+    characters = find_characters_in_page(page_text, all_characters)
+
+    return build_illustration_prompt_simple(
+        page_text=page_text,
+        characters=characters,
+        style=style,
+        setting=setting,
+    )
