@@ -36,7 +36,7 @@ from storyteller.generation import (
 )
 from storyteller.ui.components import StatusBar, StorytellerAppBar
 from storyteller.ui.dialogs import CharacterDialog, NewStoryDialog, ProgressOverlay
-from storyteller.ui.state import ActiveTab, GenerationStatus, state_manager
+from storyteller.ui.state import ActiveTab, AppConfig, GenerationStatus, state_manager
 from storyteller.ui.theme import Colors, apply_theme
 from storyteller.ui.views import CreateView, PreviewView, SettingsView
 
@@ -407,6 +407,46 @@ class StorytellerApp:
             state_manager.set_generation_status(GenerationStatus.IDLE)
             self.page.update()
 
+    def _create_image_config(self, app_config: "AppConfig") -> ImageConfig:
+        """Create an ImageConfig from app configuration.
+
+        Handles conversion of UI-friendly settings to ImageConfig,
+        including validation and fallback to safe defaults.
+
+        Args:
+            app_config: The AppConfig from state.
+
+        Returns:
+            A valid ImageConfig instance.
+        """
+        # Parse quantization from string (e.g., "4-bit" -> 4)
+        quantize_str = app_config.image_quantization
+        quantize = 4 if "4" in quantize_str else 8
+
+        # Get model and steps
+        model = app_config.image_model
+        steps = app_config.image_steps
+
+        # Validate steps for the model, use safe defaults if invalid
+        if model == "schnell":
+            if not (2 <= steps <= 8):
+                logger.warning(
+                    f"Steps {steps} invalid for schnell model, using default 4"
+                )
+                steps = 4
+        elif model == "dev":
+            if not (15 <= steps <= 30):
+                logger.warning(
+                    f"Steps {steps} invalid for dev model, using default 20"
+                )
+                steps = 20
+
+        return ImageConfig(
+            model=model,
+            steps=steps,
+            quantize=quantize,
+        )
+
     def _handle_generate_image(self) -> None:
         """Handle generate illustration request."""
         state = state_manager.state
@@ -487,21 +527,13 @@ class StorytellerApp:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / f"page_{page.page_number:02d}.png"
 
-        # Create or get image generator
+        # Create or get image generator with safe config
+        config = self._create_image_config(state.config)
+
         if self._image_generator is None:
-            config = ImageConfig(
-                model=state.config.image_model,
-                steps=state.config.image_steps,
-                quantize=4,
-            )
             self._image_generator = ImageGenerator(config)
         else:
             # Update config if needed
-            config = ImageConfig(
-                model=state.config.image_model,
-                steps=state.config.image_steps,
-                quantize=4,
-            )
             self._image_generator.update_config(config)
 
         # Progress callback
