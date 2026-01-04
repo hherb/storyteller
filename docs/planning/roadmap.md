@@ -15,18 +15,18 @@
 - [x] LLM-based story guidance engine
 - [x] Prompt templates for story assistance
 
-## Phase 3: Image Generation Integration (NEXT - IN PROGRESS)
+## Phase 3: Image Generation Integration (COMPLETED)
 
 See [phase-3-image-generation.md](./phase-3-image-generation.md) for detailed plan.
 
-- [ ] MFLUX wrapper with error handling (`generation/image.py`)
-- [ ] Style presets module (`generation/styles.py`)
-- [ ] Illustration prompt generation from story context
-- [ ] Character dataclass and consistency tracking
-- [ ] Character definition dialog
-- [ ] UI integration with progress feedback
+- [x] MFLUX wrapper with error handling (`generation/image.py`)
+- [x] Style presets module (`generation/styles.py`)
+- [x] Illustration prompt generation from story context
+- [x] Character dataclass and consistency tracking
+- [x] Character definition dialog
+- [x] UI integration with progress feedback
 
-## Phase 4: User Interface (80% COMPLETE)
+## Phase 4: User Interface (90% COMPLETE)
 
 ### Completed
 - [x] Flet application shell with tabbed layout
@@ -38,9 +38,9 @@ See [phase-3-image-generation.md](./phase-3-image-generation.md) for detailed pl
 - [x] New Story dialog
 - [x] Progress overlay dialog
 - [x] State management
+- [x] Character definition dialog
 
 ### Remaining
-- [ ] Character definition dialog (moving to Phase 3)
 - [ ] Export dialog
 - [ ] Fullscreen preview mode
 - [ ] Keyboard shortcuts
