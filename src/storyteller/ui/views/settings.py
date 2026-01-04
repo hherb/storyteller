@@ -41,7 +41,7 @@ def _create_settings_card(
                 ft.Row(
                     controls=[
                         ft.Icon(
-                            name=icon,
+                            icon,
                             color=Colors.PRIMARY,
                             size=Dimensions.ICON_MD,
                         ),
@@ -114,7 +114,7 @@ class SettingsView(ft.Container):
                 ft.dropdown.Option(key="6-10", text="Primary school (ages 6-10)"),
             ],
             border_radius=BorderRadius.MD,
-            on_change=self._on_target_age_change,
+            on_select=self._on_target_age_change,
         )
 
         self._page_count_dropdown = ft.Dropdown(
@@ -138,7 +138,7 @@ class SettingsView(ft.Container):
                 ft.dropdown.Option(key="phi4", text="phi4"),
             ],
             border_radius=BorderRadius.MD,
-            on_change=self._on_model_change,
+            on_select=self._on_model_change,
         )
 
         self._temperature_slider = ft.Slider(

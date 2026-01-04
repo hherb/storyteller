@@ -37,7 +37,7 @@ def _create_message_bubble(message: ConversationMessage) -> ft.Container:
                 ft.Row(
                     controls=[
                         ft.Icon(
-                            name=ft.Icons.PERSON if is_user else ft.Icons.SMART_TOY,
+                            ft.Icons.PERSON if is_user else ft.Icons.SMART_TOY,
                             size=Dimensions.ICON_SM,
                             color=Colors.PRIMARY if is_user else Colors.TEXT_SECONDARY,
                         ),
@@ -224,7 +224,7 @@ class CreateView(ft.Container):
                                     bgcolor=Colors.SURFACE,
                                 ),
                                 ft.TextButton(
-                                    text="+ Add Page",
+                                    content=ft.Text("+ Add Page"),
                                     icon=ft.Icons.ADD,
                                     on_click=self._handle_add_page,
                                 ),
@@ -255,7 +255,7 @@ class CreateView(ft.Container):
                                     bgcolor=Colors.SURFACE,
                                 ),
                                 ft.TextButton(
-                                    text="+ Add Character",
+                                    content=ft.Text("+ Add Character"),
                                     icon=ft.Icons.PERSON_ADD,
                                     on_click=lambda _: (
                                         self.on_add_character()
@@ -312,14 +312,14 @@ class CreateView(ft.Container):
                     ft.Row(
                         controls=[
                             ft.ElevatedButton(
-                                text="Send",
+                                content=ft.Text("Send"),
                                 icon=ft.Icons.SEND,
                                 on_click=self._handle_send,
                                 bgcolor=Colors.PRIMARY,
                                 color=Colors.TEXT_ON_PRIMARY,
                             ),
                             ft.OutlinedButton(
-                                text="Generate Page Text",
+                                content=ft.Text("Generate Page Text"),
                                 icon=ft.Icons.AUTO_AWESOME,
                                 on_click=lambda _: (
                                     self.on_generate_page()
@@ -328,7 +328,7 @@ class CreateView(ft.Container):
                                 ),
                             ),
                             ft.OutlinedButton(
-                                text="Generate Illustration",
+                                content=ft.Text("Generate Illustration"),
                                 icon=ft.Icons.IMAGE,
                                 on_click=lambda _: (
                                     self.on_generate_image()
@@ -337,7 +337,7 @@ class CreateView(ft.Container):
                                 ),
                             ),
                             ft.OutlinedButton(
-                                text="Ideas",
+                                content=ft.Text("Ideas"),
                                 icon=ft.Icons.LIGHTBULB_OUTLINE,
                             ),
                         ],
@@ -478,7 +478,7 @@ class CreateView(ft.Container):
                             ),
                         ),
                         ft.Icon(
-                            name=status_icon,
+                            status_icon,
                             size=Dimensions.ICON_SM,
                             color=status_color,
                         ),
@@ -513,7 +513,7 @@ class CreateView(ft.Container):
                 content=ft.Row(
                     controls=[
                         ft.Icon(
-                            name=ft.Icons.PERSON,
+                            ft.Icons.PERSON,
                             size=Dimensions.ICON_SM,
                             color=Colors.PRIMARY,
                         ),

@@ -108,29 +108,34 @@ class StorytellerApp:
         )
         self.page.overlay.append(self._progress_overlay)
 
-        # Tabs
+        # Tabs - using new Flet 0.80+ API with TabBar + TabBarView
         self._tabs = ft.Tabs(
+            length=3,
             selected_index=1,  # Start on Create tab
             animation_duration=300,
-            tabs=[
-                ft.Tab(
-                    text="Settings",
-                    icon=ft.Icons.SETTINGS,
-                    content=self._settings_view,
-                ),
-                ft.Tab(
-                    text="Create Story",
-                    icon=ft.Icons.EDIT,
-                    content=self._create_view,
-                ),
-                ft.Tab(
-                    text="Preview",
-                    icon=ft.Icons.VISIBILITY,
-                    content=self._preview_view,
-                ),
-            ],
-            expand=True,
             on_change=self._handle_tab_change,
+            expand=True,
+            content=ft.Column(
+                expand=True,
+                spacing=0,
+                controls=[
+                    ft.TabBar(
+                        tabs=[
+                            ft.Tab(label="Settings", icon=ft.Icons.SETTINGS),
+                            ft.Tab(label="Create Story", icon=ft.Icons.EDIT),
+                            ft.Tab(label="Preview", icon=ft.Icons.VISIBILITY),
+                        ],
+                    ),
+                    ft.TabBarView(
+                        expand=True,
+                        controls=[
+                            self._settings_view,
+                            self._create_view,
+                            self._preview_view,
+                        ],
+                    ),
+                ],
+            ),
         )
 
     def _build_layout(self) -> None:

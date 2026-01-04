@@ -143,11 +143,11 @@ class NewStoryDialog(ft.AlertDialog):
 
         self.actions = [
             ft.TextButton(
-                text="Cancel",
+                content=ft.Text("Cancel"),
                 on_click=self._handle_cancel,
             ),
             ft.ElevatedButton(
-                text="Create Story",
+                content=ft.Text("Create Story"),
                 icon=ft.Icons.ADD,
                 bgcolor=Colors.PRIMARY,
                 color=Colors.TEXT_ON_PRIMARY,
