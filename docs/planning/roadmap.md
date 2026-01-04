@@ -17,8 +17,8 @@
 
 ## Phase 2: Core Engine
 
-- [ ] Story and Page data models
-- [ ] Story persistence (save/load)
+- [x] Story and Page data models
+- [x] Story persistence (save/load)
 - [ ] LLM-based story guidance engine
 - [ ] Prompt templates for story assistance
 
