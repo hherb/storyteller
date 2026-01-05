@@ -422,6 +422,23 @@ class CreateView(ft.Container):
         if self.page:
             self._message_list.update()
 
+    def add_user_message(self, content: str) -> None:
+        """Add a user message to the conversation.
+
+        Args:
+            content: The message content.
+        """
+        msg = ConversationMessage(role="user", content=content)
+        self._message_list.controls.append(_create_message_bubble(msg))
+        if self.page:
+            self._message_list.update()
+
+    def clear_conversation(self) -> None:
+        """Clear all messages from the conversation display."""
+        self._message_list.controls.clear()
+        if self.page:
+            self._message_list.update()
+
     def set_typing(self, is_typing: bool) -> None:
         """Show or hide the typing indicator.
 

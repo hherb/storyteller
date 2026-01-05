@@ -17,6 +17,7 @@ from .story import (
     ILLUSTRATION_STYLES,
     TARGET_AGE_RANGES,
     Character,
+    ConversationMessage,
     Page,
     Story,
     StoryMetadata,
@@ -34,6 +35,7 @@ from .story import (
 __all__ = [
     # Data models
     "Character",
+    "ConversationMessage",
     "Page",
     "Story",
     "StoryMetadata",

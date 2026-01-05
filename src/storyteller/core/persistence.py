@@ -16,6 +16,7 @@ from typing import Any
 
 from .story import (
     Character,
+    ConversationMessage,
     Page,
     Story,
     StoryMetadata,
@@ -139,6 +140,24 @@ def _dict_to_metadata(data: dict[str, Any]) -> StoryMetadata:
     )
 
 
+def _message_to_dict(message: ConversationMessage) -> dict[str, Any]:
+    """Convert a ConversationMessage to a JSON-serializable dict."""
+    return {
+        "role": message.role,
+        "content": message.content,
+        "timestamp": _datetime_to_iso(message.timestamp),
+    }
+
+
+def _dict_to_message(data: dict[str, Any]) -> ConversationMessage:
+    """Convert a dict to a ConversationMessage."""
+    return ConversationMessage(
+        role=data["role"],
+        content=data["content"],
+        timestamp=_iso_to_datetime(data["timestamp"]),
+    )
+
+
 def story_to_dict(story: Story) -> dict[str, Any]:
     """
     Convert a Story to a JSON-serializable dict.
@@ -154,6 +173,7 @@ def story_to_dict(story: Story) -> dict[str, Any]:
         "metadata": _metadata_to_dict(story.metadata),
         "characters": [_character_to_dict(c) for c in story.characters],
         "pages": [_page_to_dict(p) for p in story.pages],
+        "conversation": [_message_to_dict(m) for m in story.conversation],
     }
 
 
@@ -177,6 +197,7 @@ def dict_to_story(
         metadata=_dict_to_metadata(data["metadata"]),
         characters=tuple(_dict_to_character(c) for c in data.get("characters", [])),
         pages=tuple(_dict_to_page(p, pages_dir) for p in data.get("pages", [])),
+        conversation=tuple(_dict_to_message(m) for m in data.get("conversation", [])),
         project_path=project_path,
     )
 

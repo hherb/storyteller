@@ -14,6 +14,22 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class ConversationMessage:
+    """
+    A single message in the story creation conversation.
+
+    Attributes:
+        role: Who sent the message ('user' or 'assistant').
+        content: The text content of the message.
+        timestamp: When the message was created.
+    """
+
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: datetime = field(default_factory=datetime.now)
+
+
+@dataclass(frozen=True)
 class Character:
     """
     A character in the story with visual consistency traits.
@@ -173,12 +189,14 @@ class Story:
         metadata: Story metadata (title, author, etc.).
         characters: Tuple of characters appearing in the story.
         pages: Tuple of pages in reading order.
+        conversation: Tuple of conversation messages from story creation.
         project_path: Directory where the story is saved, or None if unsaved.
     """
 
     metadata: StoryMetadata
     characters: tuple[Character, ...] = field(default_factory=tuple)
     pages: tuple[Page, ...] = field(default_factory=tuple)
+    conversation: tuple[ConversationMessage, ...] = field(default_factory=tuple)
     project_path: Path | None = None
 
     @property

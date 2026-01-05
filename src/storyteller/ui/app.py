@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from storyteller.core import (
+    ConversationMessage,
     Story,
     StoryEngine,
     add_character,
@@ -319,7 +320,9 @@ class StorytellerApp:
         state = state_manager.state
         if state.current_story:
             try:
-                saved_story = save_story(state.current_story)
+                # Copy conversation from state to story before saving
+                story_to_save = self._copy_conversation_to_story(state.current_story)
+                saved_story = save_story(story_to_save)
                 state_manager.set_story(saved_story)
                 state_manager.mark_saved()
 
@@ -845,6 +848,47 @@ class StorytellerApp:
         self._progress_overlay.hide()
         self._show_snackbar("Generation cancelled.", Colors.WARNING)
 
+    def _copy_conversation_to_story(self, story: Story) -> Story:
+        """Copy conversation messages from state to story for saving.
+
+        Args:
+            story: The story to update.
+
+        Returns:
+            A new Story with conversation messages from state.
+        """
+        from dataclasses import replace
+
+        state = state_manager.state
+        # Convert state conversation messages to core ConversationMessage
+        conversation = tuple(
+            ConversationMessage(
+                role=msg.role,
+                content=msg.content,
+                timestamp=msg.timestamp,
+            )
+            for msg in state.conversation_messages
+        )
+        return replace(story, conversation=conversation)
+
+    def _restore_conversation_from_story(self, story: Story) -> None:
+        """Restore conversation history from story to UI.
+
+        Args:
+            story: The story containing saved conversation.
+        """
+        # Clear existing conversation in state and UI
+        state_manager.clear_conversation()
+        self._create_view.clear_conversation()
+
+        # Restore messages from story
+        for msg in story.conversation:
+            state_manager.add_conversation_message(msg.role, msg.content)
+            if msg.role == "user":
+                self._create_view.add_user_message(msg.content)
+            else:
+                self._create_view.add_assistant_message(msg.content)
+
     def _update_ui_from_story(self, story: Story) -> None:
         """Update all UI components from a loaded story.
 
@@ -881,6 +925,9 @@ class StorytellerApp:
             self._preview_view.set_page_text(first_page.text)
             if first_page.illustration_path:
                 self._preview_view.set_image(first_page.illustration_path)
+
+        # Restore conversation history
+        self._restore_conversation_from_story(story)
 
         self.page.update()
 
