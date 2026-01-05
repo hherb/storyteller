@@ -293,6 +293,31 @@ Example: "small brown mouse, big curious eyes, pink nose, tiny red scarf, fluffy
 Respond with ONLY the comma-separated visual traits.""",
 )
 
+EXTRACT_CHARACTERS_FROM_TEXT = PromptTemplate(
+    name="extract_characters_from_text",
+    description="Extract character names and descriptions from story text",
+    template="""Analyze this children's story text and identify all characters (people, animals, or creatures).
+
+Story text:
+"$story_text"
+
+For each character found, provide:
+1. Their name (or a descriptive name if not explicitly named, like "the little mouse")
+2. A brief description based on what the text reveals
+3. Visual traits for illustration (colors, size, clothing, distinguishing features)
+
+Format your response as one character per line:
+NAME | DESCRIPTION | VISUAL_TRAIT1, VISUAL_TRAIT2, VISUAL_TRAIT3
+
+Example:
+Luna | A curious young mouse who loves adventures | small gray mouse, bright curious eyes, pink nose, tiny blue dress
+Mr. Owl | A wise old owl who helps lost animals | large brown owl, round spectacles, fluffy feathers, kind eyes
+
+Identify ALL characters, including secondary ones. If a character has no explicit name, create an appropriate descriptive name.
+
+Respond with ONLY the character lines, nothing else. If no characters are found, respond with "NONE".""",
+)
+
 
 # =============================================================================
 # Utility Functions

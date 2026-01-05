@@ -87,6 +87,7 @@ class CreateView(ft.Container):
         on_generate_page: Callable[[], None] | None = None,
         on_generate_image: Callable[[], None] | None = None,
         on_add_character: Callable[[], None] | None = None,
+        on_edit_character: Callable[[str], None] | None = None,
         on_page_select: Callable[[int], None] | None = None,
         on_add_page: Callable[[], None] | None = None,
     ) -> None:
@@ -97,6 +98,7 @@ class CreateView(ft.Container):
             on_generate_page: Callback to generate page text.
             on_generate_image: Callback to generate illustration.
             on_add_character: Callback to add a character.
+            on_edit_character: Callback to edit a character (receives name).
             on_page_select: Callback when a page is selected.
             on_add_page: Callback to add a new page.
         """
@@ -106,6 +108,7 @@ class CreateView(ft.Container):
         self.on_generate_page = on_generate_page
         self.on_generate_image = on_generate_image
         self.on_add_character = on_add_character
+        self.on_edit_character = on_edit_character
         self.on_page_select = on_page_select
         self.on_add_page = on_add_page
 
@@ -527,6 +530,7 @@ class CreateView(ft.Container):
         self._character_list.controls.clear()
 
         for char in characters:
+            char_name = char["name"]
             char_item = ft.Container(
                 content=ft.Row(
                     controls=[
@@ -536,19 +540,38 @@ class CreateView(ft.Container):
                             color=Colors.PRIMARY,
                         ),
                         ft.Text(
-                            value=char["name"],
+                            value=char_name,
                             size=Typography.SIZE_SM,
                             color=Colors.TEXT_PRIMARY,
+                            expand=True,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.EDIT,
+                            icon_size=Dimensions.ICON_SM,
+                            tooltip="Edit character",
+                            on_click=lambda _e, n=char_name: self._handle_edit_character(n),
                         ),
                     ],
                     spacing=Spacing.SM,
                 ),
                 padding=Spacing.XS,
+                border_radius=BorderRadius.SM,
+                ink=True,
+                on_click=lambda _e, n=char_name: self._handle_edit_character(n),
             )
             self._character_list.controls.append(char_item)
 
         if self.page:
             self._character_list.update()
+
+    def _handle_edit_character(self, name: str) -> None:
+        """Handle character edit click.
+
+        Args:
+            name: The name of the character to edit.
+        """
+        if self.on_edit_character:
+            self.on_edit_character(name)
 
     def _handle_generate_image_click(self, e: ft.ControlEvent) -> None:
         """Handle Generate Illustration button click."""

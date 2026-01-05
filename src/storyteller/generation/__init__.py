@@ -12,6 +12,7 @@ from .image import (
     get_generator,
 )
 from .prompts import (
+    EXTRACT_CHARACTERS_FROM_TEXT,
     EXTRACT_VISUAL_TRAITS,
     GENERATE_ILLUSTRATION_PROMPT,
     PAGE_WRITER_SYSTEM,
@@ -87,4 +88,5 @@ __all__ = [
     "WRITE_PAGE_TEXT",
     "GENERATE_ILLUSTRATION_PROMPT",
     "EXTRACT_VISUAL_TRAITS",
+    "EXTRACT_CHARACTERS_FROM_TEXT",
 ]

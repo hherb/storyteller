@@ -411,6 +411,51 @@ class StoryEngine:
         logger.info("Extracted %d visual traits for %s", len(traits), name)
         return traits
 
+    def extract_characters_from_text(
+        self,
+        story_text: str,
+    ) -> list[tuple[str, str, list[str]]]:
+        """
+        Use the LLM to extract character information from story text.
+
+        Analyzes the provided text and identifies all characters, their
+        descriptions, and visual traits for illustration consistency.
+
+        Args:
+            story_text: The story text to analyze.
+
+        Returns:
+            List of (name, description, visual_traits) tuples for each character.
+        """
+        from storyteller.generation.prompts import EXTRACT_CHARACTERS_FROM_TEXT
+
+        prompt = EXTRACT_CHARACTERS_FROM_TEXT.render(story_text=story_text)
+        response = self._text_gen.generate(prompt)
+
+        characters: list[tuple[str, str, list[str]]] = []
+
+        # Parse the response - one character per line
+        for line in response.strip().split("\n"):
+            line = line.strip()
+            if not line or line.upper() == "NONE":
+                continue
+
+            # Parse: NAME | DESCRIPTION | VISUAL_TRAITS
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 3:
+                name = parts[0]
+                description = parts[1]
+                traits = [t.strip() for t in parts[2].split(",") if t.strip()]
+                characters.append((name, description, traits))
+            elif len(parts) == 2:
+                # No traits provided
+                name = parts[0]
+                description = parts[1]
+                characters.append((name, description, []))
+
+        logger.info("Extracted %d characters from text", len(characters))
+        return characters
+
     def add_page_to_story(
         self,
         page_number: int,

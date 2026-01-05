@@ -334,16 +334,6 @@ class CharacterDialog(ft.AlertDialog):
         if self.page:
             self._traits_container.update()
 
-    def reset(self) -> None:
-        """Reset all fields to defaults."""
-        self._name_field.value = ""
-        self._name_field.error_text = None
-        self._description_field.value = ""
-        self._description_field.error_text = None
-        self._add_trait_field.value = ""
-        self._traits = []
-        self._update_traits_display()
-
     def set_character(
         self,
         name: str,
@@ -361,3 +351,24 @@ class CharacterDialog(ft.AlertDialog):
         self._description_field.value = description
         self._traits = list(visual_traits)
         self._update_traits_display()
+        self._editing_name = name  # Track original name for updates
+        self.title.value = "Edit Character"
+        if self.page:
+            self.title.update()
+
+    def reset(self) -> None:
+        """Reset all fields to defaults."""
+        self._name_field.value = ""
+        self._name_field.error_text = None
+        self._description_field.value = ""
+        self._description_field.error_text = None
+        self._add_trait_field.value = ""
+        self._traits = []
+        self._editing_name = None  # Not in edit mode
+        self.title.value = "Define Character"
+        self._update_traits_display()
+
+    @property
+    def editing_character_name(self) -> str | None:
+        """Get the name of the character being edited, if any."""
+        return getattr(self, "_editing_name", None)

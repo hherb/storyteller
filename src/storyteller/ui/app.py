@@ -104,6 +104,7 @@ class StorytellerApp:
             on_generate_page=self._handle_generate_page,
             on_generate_image=self._handle_generate_image,
             on_add_character=self._handle_add_character,
+            on_edit_character=self._handle_edit_character,
             on_page_select=self._handle_page_select,
             on_add_page=self._handle_add_page,
         )
@@ -442,6 +443,10 @@ class StorytellerApp:
             state_manager.set_story(updated_story)
             state_manager.mark_modified()
 
+            # Auto-extract characters if this is the first page and no characters exist
+            if page_number == 1 and not updated_story.characters:
+                self._auto_extract_characters(page_text)
+
             # Update UI display
             self._create_view.update_current_page(page_text, "")
             self._update_page_list()
@@ -709,8 +714,33 @@ class StorytellerApp:
         self._character_dialog.open = True
         self.page.update()
 
+    def _handle_edit_character(self, name: str) -> None:
+        """Handle edit character request.
+
+        Args:
+            name: The name of the character to edit.
+        """
+        state = state_manager.state
+        if not state.current_story:
+            return
+
+        # Find the character
+        character = state.current_story.get_character(name)
+        if not character:
+            self._show_snackbar(f"Character '{name}' not found.", Colors.ERROR)
+            return
+
+        # Set up dialog for editing
+        self._character_dialog.set_character(
+            name=character.name,
+            description=character.description,
+            visual_traits=list(character.visual_traits),
+        )
+        self._character_dialog.open = True
+        self.page.update()
+
     def _save_character(self, char_data: dict) -> None:
-        """Save a new character from the dialog.
+        """Save a character from the dialog (add or edit).
 
         Args:
             char_data: Dictionary with name, description, visual_traits.
@@ -718,6 +748,15 @@ class StorytellerApp:
         state = state_manager.state
         if not state.current_story:
             return
+
+        # Check if we're editing an existing character
+        editing_name = self._character_dialog.editing_character_name
+        current_story = state.current_story
+
+        if editing_name:
+            # Remove the old character first
+            from storyteller.core import remove_character
+            current_story = remove_character(current_story, editing_name)
 
         # Create the character
         character = create_character(
@@ -727,14 +766,15 @@ class StorytellerApp:
         )
 
         # Add to story
-        updated_story = add_character(state.current_story, character)
+        updated_story = add_character(current_story, character)
         state_manager.set_story(updated_story)
         state_manager.mark_modified()
 
         # Update character list in create view
         self._update_character_list()
 
-        self._show_snackbar(f"Character '{character.name}' added!", Colors.SUCCESS)
+        action = "updated" if editing_name else "added"
+        self._show_snackbar(f"Character '{character.name}' {action}!", Colors.SUCCESS)
 
     def _extract_character_traits(self, name: str, description: str) -> list[str]:
         """Extract visual traits from character description using LLM.
@@ -768,6 +808,54 @@ class StorytellerApp:
         except Exception as e:
             logger.warning(f"Failed to extract traits: {e}")
             return []
+
+    def _auto_extract_characters(self, page_text: str) -> None:
+        """Auto-extract characters from page text using AI.
+
+        Args:
+            page_text: The text to extract characters from.
+        """
+        state = state_manager.state
+        if not state.engine:
+            return
+
+        try:
+            logger.info("Auto-extracting characters from first page...")
+            extracted = state.engine.extract_characters_from_text(page_text)
+
+            if not extracted:
+                logger.info("No characters found in text")
+                return
+
+            # Add each extracted character to the story
+            current_story = state.current_story
+            if not current_story:
+                return
+
+            for name, description, traits in extracted:
+                # Check if character already exists
+                if current_story.get_character(name):
+                    continue
+
+                character = create_character(
+                    name=name,
+                    description=description,
+                    visual_traits=traits,
+                )
+                current_story = add_character(current_story, character)
+                logger.info(f"Auto-added character: {name}")
+
+            # Update state
+            state_manager.set_story(current_story)
+            self._update_character_list()
+
+            self._show_snackbar(
+                f"Auto-detected {len(extracted)} character(s) from story",
+                Colors.SUCCESS,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to auto-extract characters: {e}")
+            # Don't show error - this is a convenience feature
 
     def _update_character_list(self) -> None:
         """Update the character list in the create view."""
