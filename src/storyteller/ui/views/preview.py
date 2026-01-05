@@ -379,8 +379,9 @@ class PreviewView(ft.Container):
         if image_path and image_path.exists():
             self._image_container.content = ft.Image(
                 src=str(image_path),
-                fit=ft.ImageFit.CONTAIN,
+                fit=ft.BoxFit.CONTAIN,
                 border_radius=BorderRadius.LG,
+                expand=True,
             )
         else:
             self._image_container.content = self._create_placeholder()

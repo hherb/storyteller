@@ -207,6 +207,7 @@ class SettingsView(ft.Container):
                 ],
                 spacing=Spacing.SM,
             ),
+            on_change=self._on_quantization_change,
         )
 
         self._steps_slider = ft.Slider(
@@ -443,6 +444,11 @@ class SettingsView(ft.Container):
         """Handle auto-generate checkbox change."""
         state_manager.update_config(auto_generate_images=e.control.value)
 
+    def _on_quantization_change(self, e: ft.ControlEvent) -> None:
+        """Handle quantization radio change."""
+        if e.control.value:
+            state_manager.update_config(image_quantization=e.control.value)
+
     def update_available_models(self, models: list[str]) -> None:
         """Update the list of available LLM models.
 
@@ -490,5 +496,42 @@ class SettingsView(ft.Container):
         self._author_field.value = author
         self._target_age_dropdown.value = target_age
         self._style_radio.value = style
+        if self.page:
+            self.update()
+
+    def set_image_settings(
+        self,
+        model: str,
+        steps: int,
+        quantization: str,
+    ) -> None:
+        """Set the image generation settings fields.
+
+        Args:
+            model: FLUX model variant ('schnell' or 'dev').
+            steps: Number of inference steps.
+            quantization: Quantization level ('4-bit' or '8-bit').
+        """
+        self._image_model_radio.value = model
+        self._steps_slider.value = steps
+        self._steps_label.value = f"Steps: {steps}"
+        self._quantization_radio.value = quantization
+        if self.page:
+            self.update()
+
+    def set_llm_settings(
+        self,
+        model: str,
+        temperature: float,
+    ) -> None:
+        """Set the LLM settings fields.
+
+        Args:
+            model: LLM model name.
+            temperature: Temperature value (0.0-1.0).
+        """
+        self._model_dropdown.value = model
+        self._temperature_slider.value = temperature
+        self._temperature_label.value = f"Temperature: {temperature}"
         if self.page:
             self.update()

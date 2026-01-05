@@ -17,7 +17,9 @@ from storyteller.core import (
     Story,
     StoryEngine,
     add_character,
+    add_page,
     create_character,
+    create_page,
     create_story,
     list_stories,
     load_story,
@@ -102,6 +104,7 @@ class StorytellerApp:
             on_generate_image=self._handle_generate_image,
             on_add_character=self._handle_add_character,
             on_page_select=self._handle_page_select,
+            on_add_page=self._handle_add_page,
         )
 
         self._preview_view = PreviewView(
@@ -186,6 +189,22 @@ class StorytellerApp:
 
     def _initialize_state(self) -> None:
         """Initialize application state."""
+        # Load saved configuration
+        state_manager.load_config()
+        print(f"DEBUG: Loaded config: {state_manager.state.config}")
+
+        # Apply loaded config to settings view
+        config = state_manager.state.config
+        self._settings_view.set_image_settings(
+            model=config.image_model,
+            steps=config.image_steps,
+            quantization=config.image_quantization,
+        )
+        self._settings_view.set_llm_settings(
+            model=config.llm_model,
+            temperature=config.llm_temperature,
+        )
+
         # Try to fetch available models
         self._refresh_models()
 
@@ -392,14 +411,39 @@ class StorytellerApp:
         self._progress_overlay.show("Generating page text...")
 
         try:
+            page_number = state.current_page_number
             page_text = state.engine.generate_page_text(
-                page_number=state.current_page_number,
+                page_number=page_number,
                 page_purpose="story",
                 total_pages=len(state.current_story.pages) or 10,
             )
-            # Update current page display
-            self._create_view.update_current_page(page_text, "")
+
+            # Check if page already exists in story
+            existing_page = state.current_story.get_page(page_number)
+            if existing_page:
+                # Update existing page
+                updated_story = update_page(
+                    state.current_story,
+                    page_number,
+                    text=page_text,
+                )
+            else:
+                # Create new page and add to story
+                new_page = create_page(
+                    page_number=page_number,
+                    text=page_text,
+                )
+                updated_story = add_page(state.current_story, new_page)
+
+            # Update state with the new story
+            state_manager.set_story(updated_story)
             state_manager.mark_modified()
+
+            # Update UI display
+            self._create_view.update_current_page(page_text, "")
+            self._update_page_list()
+
+            logger.info(f"Generated and saved text for page {page_number}")
         except Exception as e:
             logger.error(f"Failed to generate page: {e}")
             state_manager.set_error(str(e))
@@ -450,20 +494,20 @@ class StorytellerApp:
 
     def _handle_generate_image(self) -> None:
         """Handle generate illustration request."""
-        logger.info("Generate image button clicked")
+        print("DEBUG: _handle_generate_image called")
         state = state_manager.state
 
         # Check if we have a story
         if not state.current_story:
-            logger.warning("No story exists - cannot generate image")
+            print("DEBUG: No story exists - cannot generate image")
             self._show_snackbar("Please create a story first.", Colors.WARNING)
             return
 
         # Check if current page has text
         page = state.current_story.get_page(state.current_page_number)
-        logger.info(f"Current page: {state.current_page_number}, page object: {page}")
+        print(f"DEBUG: Current page: {state.current_page_number}, page object: {page}")
         if not page or not page.text:
-            logger.warning(f"Page has no text - page={page}, text={page.text if page else None}")
+            print(f"DEBUG: Page has no text - page={page}, text={page.text if page else None}")
             self._show_snackbar(
                 "Please add text to this page before generating an illustration.",
                 Colors.WARNING,
@@ -472,18 +516,18 @@ class StorytellerApp:
 
         # Check platform and MFLUX availability
         platform_ok, platform_msg = check_platform()
-        logger.info(f"Platform check: ok={platform_ok}, msg={platform_msg}")
+        print(f"DEBUG: Platform check: ok={platform_ok}, msg={platform_msg}")
         if not platform_ok:
             self._show_snackbar(platform_msg, Colors.ERROR)
             return
 
         mflux_ok, mflux_msg = check_mflux_available()
-        logger.info(f"MFLUX check: ok={mflux_ok}, msg={mflux_msg}")
+        print(f"DEBUG: MFLUX check: ok={mflux_ok}, msg={mflux_msg}")
         if not mflux_ok:
             self._show_snackbar(mflux_msg, Colors.ERROR)
             return
 
-        logger.info("All checks passed, starting image generation")
+        print("DEBUG: All checks passed, starting image generation")
 
         # Show progress overlay
         self._progress_overlay.show(
@@ -747,6 +791,34 @@ class StorytellerApp:
         )
         self._update_current_page_display()
 
+    def _handle_add_page(self) -> None:
+        """Handle add page request."""
+        state = state_manager.state
+        if not state.current_story:
+            self._show_snackbar("Please create a story first.", Colors.WARNING)
+            return
+
+        # Calculate next page number
+        existing_pages = len(state.current_story.pages)
+        new_page_number = existing_pages + 1
+
+        # Create new empty page
+        new_page = create_page(page_number=new_page_number, text="")
+        updated_story = add_page(state.current_story, new_page)
+
+        # Update state
+        state_manager.set_story(updated_story)
+        state_manager.set_current_page(new_page_number)
+        state_manager.mark_modified()
+
+        # Update UI
+        self._update_page_list()
+        self._update_current_page_display()
+        self._preview_view.set_page_count(new_page_number, new_page_number)
+
+        self._show_snackbar(f"Added page {new_page_number}", Colors.SUCCESS)
+        self.page.update()
+
     def _handle_edit_from_preview(self) -> None:
         """Handle edit request from preview tab."""
         self._tabs.selected_index = 1  # Switch to Create tab
@@ -779,6 +851,11 @@ class StorytellerApp:
         Args:
             story: The story to display.
         """
+        logger.info(
+            f"Updating UI from story: {story.metadata.title}, "
+            f"{len(story.pages)} pages, {len(story.characters)} characters"
+        )
+
         # Update settings
         self._settings_view.set_story_settings(
             title=story.metadata.title,
@@ -786,6 +863,9 @@ class StorytellerApp:
             target_age=story.metadata.target_age,
             style=story.metadata.style,
         )
+
+        # Update character list
+        self._update_character_list()
 
         # Update page list and preview
         page_count = len(story.pages) or 1
@@ -801,6 +881,8 @@ class StorytellerApp:
             self._preview_view.set_page_text(first_page.text)
             if first_page.illustration_path:
                 self._preview_view.set_image(first_page.illustration_path)
+
+        self.page.update()
 
     def _update_page_list(self) -> None:
         """Update the page list in the create view."""

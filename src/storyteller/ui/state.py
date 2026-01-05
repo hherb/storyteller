@@ -7,15 +7,19 @@ user configuration.
 
 from __future__ import annotations
 
+import json
+import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from storyteller.core import Story, StoryEngine
+
+logger = logging.getLogger(__name__)
 
 
 class ActiveTab(Enum):
@@ -255,7 +259,7 @@ class StateManager:
         self.notify_listeners()
 
     def update_config(self, **kwargs: object) -> None:
-        """Update configuration values.
+        """Update configuration values and save to disk.
 
         Args:
             **kwargs: Configuration fields to update.
@@ -263,7 +267,73 @@ class StateManager:
         for key, value in kwargs.items():
             if hasattr(self._state.config, key):
                 setattr(self._state.config, key, value)
+        # Auto-save config when changed
+        self.save_config()
         self.notify_listeners()
+
+    def save_config(self) -> None:
+        """Save the current configuration to disk."""
+        save_config(self._state.config)
+
+    def load_config(self) -> None:
+        """Load configuration from disk."""
+        self._state.config = load_config()
+
+
+def get_config_path() -> Path:
+    """Get the path to the configuration file.
+
+    Returns:
+        Path to the config.json file in the Storyteller directory.
+    """
+    config_dir = Path.home() / "Storyteller"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir / "config.json"
+
+
+def save_config(config: AppConfig) -> None:
+    """Save configuration to disk.
+
+    Args:
+        config: The AppConfig to save.
+    """
+    config_path = get_config_path()
+    try:
+        data = asdict(config)
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        print(f"DEBUG: Saved config to {config_path}")
+    except Exception as e:
+        logger.error(f"Failed to save config: {e}")
+
+
+def load_config() -> AppConfig:
+    """Load configuration from disk.
+
+    Returns:
+        The loaded AppConfig, or a default one if not found.
+    """
+    config_path = get_config_path()
+    if not config_path.exists():
+        print(f"DEBUG: No config file found at {config_path}, using defaults")
+        return AppConfig()
+
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            data: dict[str, Any] = json.load(f)
+        print(f"DEBUG: Loaded config from {config_path}: {data}")
+        return AppConfig(
+            llm_model=data.get("llm_model", "phi4"),
+            llm_temperature=data.get("llm_temperature", 0.7),
+            llm_max_tokens=data.get("llm_max_tokens"),
+            image_model=data.get("image_model", "schnell"),
+            image_quantization=data.get("image_quantization", "4-bit"),
+            image_steps=data.get("image_steps", 4),
+            auto_generate_images=data.get("auto_generate_images", False),
+        )
+    except Exception as e:
+        logger.error(f"Failed to load config: {e}")
+        return AppConfig()
 
 
 # Global state manager instance

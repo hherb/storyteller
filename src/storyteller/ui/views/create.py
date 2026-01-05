@@ -88,6 +88,7 @@ class CreateView(ft.Container):
         on_generate_image: Callable[[], None] | None = None,
         on_add_character: Callable[[], None] | None = None,
         on_page_select: Callable[[int], None] | None = None,
+        on_add_page: Callable[[], None] | None = None,
     ) -> None:
         """Initialize the create view.
 
@@ -97,6 +98,7 @@ class CreateView(ft.Container):
             on_generate_image: Callback to generate illustration.
             on_add_character: Callback to add a character.
             on_page_select: Callback when a page is selected.
+            on_add_page: Callback to add a new page.
         """
         super().__init__()
 
@@ -105,6 +107,7 @@ class CreateView(ft.Container):
         self.on_generate_image = on_generate_image
         self.on_add_character = on_add_character
         self.on_page_select = on_page_select
+        self.on_add_page = on_add_page
 
         # Conversation components
         self._message_list = ft.ListView(
@@ -330,15 +333,13 @@ class CreateView(ft.Container):
                             ft.OutlinedButton(
                                 content=ft.Text("Generate Illustration"),
                                 icon=ft.Icons.IMAGE,
-                                on_click=lambda _: (
-                                    self.on_generate_image()
-                                    if self.on_generate_image
-                                    else None
-                                ),
+                                on_click=self._handle_generate_image_click,
                             ),
                             ft.OutlinedButton(
                                 content=ft.Text("Ideas"),
                                 icon=ft.Icons.LIGHTBULB_OUTLINE,
+                                disabled=True,
+                                tooltip="Coming soon",
                             ),
                         ],
                         spacing=Spacing.SM,
@@ -407,8 +408,8 @@ class CreateView(ft.Container):
 
     def _handle_add_page(self, _e: ft.ControlEvent) -> None:
         """Handle adding a new page."""
-        # This will be connected to the state manager
-        pass
+        if self.on_add_page:
+            self.on_add_page()
 
     def add_assistant_message(self, content: str) -> None:
         """Add an assistant message to the conversation.
@@ -531,6 +532,15 @@ class CreateView(ft.Container):
 
         if self.page:
             self._character_list.update()
+
+    def _handle_generate_image_click(self, e: ft.ControlEvent) -> None:
+        """Handle Generate Illustration button click."""
+        print("DEBUG: Generate Illustration button clicked!")
+        if self.on_generate_image:
+            print("DEBUG: Calling on_generate_image callback")
+            self.on_generate_image()
+        else:
+            print("DEBUG: on_generate_image callback is None!")
 
     def update_current_page(self, text: str, prompt: str) -> None:
         """Update the current page content display.
