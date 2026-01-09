@@ -6,11 +6,25 @@ with visual traits for illustration consistency.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 import flet as ft
 
 from storyteller.ui.theme import BorderRadius, Colors, Spacing, Typography
+
+logger = logging.getLogger(__name__)
+
+# Word sets for simple trait extraction
+COLOR_WORDS = frozenset({
+    "red", "blue", "green", "yellow", "brown", "black", "white",
+    "pink", "purple", "orange", "gray", "grey", "golden"
+})
+SIZE_WORDS = frozenset({"small", "tiny", "little", "big", "large", "tall", "short"})
+ANIMAL_WORDS = frozenset({
+    "mouse", "cat", "dog", "bear", "rabbit", "fox", "owl",
+    "bird", "bunny", "squirrel", "dragon", "unicorn"
+})
 
 
 class CharacterDialog(ft.AlertDialog):
@@ -24,6 +38,7 @@ class CharacterDialog(ft.AlertDialog):
         self,
         on_save: Callable[[dict], None] | None = None,
         on_extract_traits: Callable[[str, str], list[str]] | None = None,
+        on_check_name_exists: Callable[[str], bool] | None = None,
     ) -> None:
         """Initialize the character dialog.
 
@@ -31,11 +46,14 @@ class CharacterDialog(ft.AlertDialog):
             on_save: Callback when character is saved, receives character dict.
             on_extract_traits: Optional callback to extract visual traits from
                 description using AI. Receives (name, description), returns traits.
+            on_check_name_exists: Optional callback to check if a character name
+                already exists. Receives name, returns True if exists.
         """
         super().__init__()
 
         self.on_save_callback = on_save
         self.on_extract_traits = on_extract_traits
+        self.on_check_name_exists = on_check_name_exists
 
         # Form fields
         self._name_field = ft.TextField(
@@ -175,11 +193,23 @@ class CharacterDialog(ft.AlertDialog):
                 self._name_field.update()
             return
 
+        name = name.strip()
+
+        # Check for duplicate names (only when adding new, not editing)
+        editing_name = getattr(self, "_editing_name", None)
+        if self.on_check_name_exists and editing_name != name:
+            # If editing and name changed, or adding new character, check for duplicates
+            if self.on_check_name_exists(name):
+                self._name_field.error_text = f"A character named '{name}' already exists"
+                if self.page:
+                    self._name_field.update()
+                return
+
         description = self._description_field.value or ""
 
         # Collect character data
         character_data = {
-            "name": name.strip(),
+            "name": name,
             "description": description.strip(),
             "visual_traits": self._traits.copy(),
         }
@@ -213,9 +243,20 @@ class CharacterDialog(ft.AlertDialog):
                 if traits:
                     self._traits = traits
                     self._update_traits_display()
-            except Exception:
-                # Silently fail - the user can still add traits manually
-                pass
+            except Exception as e:
+                # Log the error for debugging but don't show to user
+                # since they can still add traits manually
+                logger.warning(f"Failed to extract traits via AI: {e}")
+                # Show a subtle indicator that AI extraction failed
+                if self.page:
+                    self.page.snack_bar = ft.SnackBar(
+                        content=ft.Text(
+                            "AI trait extraction unavailable. You can add traits manually."
+                        ),
+                        bgcolor=Colors.WARNING if hasattr(Colors, "WARNING") else None,
+                    )
+                    self.page.snack_bar.open = True
+                    self.page.update()
         else:
             # Fallback: simple extraction from description
             self._extract_traits_simple(description)
@@ -231,28 +272,17 @@ class CharacterDialog(ft.AlertDialog):
         # Look for common visual descriptors
         words = description.lower().split()
 
-        # Color words
-        colors = {"red", "blue", "green", "yellow", "brown", "black", "white",
-                  "pink", "purple", "orange", "gray", "grey", "golden"}
-
-        # Size words
-        sizes = {"small", "tiny", "little", "big", "large", "tall", "short"}
-
-        # Animal words
-        animals = {"mouse", "cat", "dog", "bear", "rabbit", "fox", "owl",
-                   "bird", "bunny", "squirrel", "dragon", "unicorn"}
-
         found_traits = []
 
         for i, word in enumerate(words):
             # Check for color + noun combinations
-            if word in colors and i + 1 < len(words):
+            if word in COLOR_WORDS and i + 1 < len(words):
                 next_word = words[i + 1].strip(",.!?")
                 found_traits.append(f"{word} {next_word}")
-            elif word in sizes and i + 1 < len(words):
+            elif word in SIZE_WORDS and i + 1 < len(words):
                 next_word = words[i + 1].strip(",.!?")
                 found_traits.append(f"{word} {next_word}")
-            elif word in animals:
+            elif word in ANIMAL_WORDS:
                 found_traits.append(word)
 
         # Add any found traits

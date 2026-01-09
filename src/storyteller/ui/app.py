@@ -126,6 +126,7 @@ class StorytellerApp:
         self._character_dialog = CharacterDialog(
             on_save=self._save_character,
             on_extract_traits=self._extract_character_traits,
+            on_check_name_exists=self._check_character_name_exists,
         )
         self.page.overlay.append(self._character_dialog)
 
@@ -738,6 +739,20 @@ class StorytellerApp:
         )
         self._character_dialog.open = True
         self.page.update()
+
+    def _check_character_name_exists(self, name: str) -> bool:
+        """Check if a character with the given name already exists.
+
+        Args:
+            name: The character name to check.
+
+        Returns:
+            True if a character with that name exists, False otherwise.
+        """
+        state = state_manager.state
+        if not state.current_story:
+            return False
+        return state.current_story.get_character(name) is not None
 
     def _save_character(self, char_data: dict) -> None:
         """Save a character from the dialog (add or edit).

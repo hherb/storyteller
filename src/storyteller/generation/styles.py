@@ -26,7 +26,10 @@ class StylePreset:
     description: str
 
 
-# Child-safety modifiers added to all prompts
+# Child-safety modifiers added when apply_style() or build_illustration_prompt() is called.
+# IMPORTANT: These modifiers are NOT automatically added to all prompts.
+# Callers using ImageGenerator.generate() directly must ensure they call
+# apply_style() or build_illustration_prompt() to include these safety modifiers.
 SAFETY_MODIFIERS = (
     "children's book illustration, friendly and approachable, "
     "warm colors, gentle and safe feeling, age-appropriate"

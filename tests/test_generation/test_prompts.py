@@ -224,3 +224,190 @@ class TestCalculateStoryStructure:
             assert structure["ending_start"] == structure["middle_end"] + 1
             # Ending includes last page
             assert structure["ending_start"] <= page_count
+
+
+class TestFindCharactersInPage:
+    """Tests for the find_characters_in_page function."""
+
+    def test_finds_character_by_name(self) -> None:
+        """Character is found when name appears in text."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Luna", "a brave mouse", ("small", "brown")),
+        ]
+        result = find_characters_in_page("Luna hopped through the garden.", characters)
+        assert len(result) == 1
+        assert result[0][0] == "Luna"
+
+    def test_case_insensitive_matching(self) -> None:
+        """Character matching is case insensitive."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Luna", "a brave mouse", ("small",)),
+        ]
+        result = find_characters_in_page("LUNA was very happy.", characters)
+        assert len(result) == 1
+
+    def test_word_boundary_prevents_substring_match(self) -> None:
+        """Character name 'Art' should not match 'Arthur' or 'party'."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Art", "a painter", ("artistic",)),
+        ]
+        # Should NOT match Arthur
+        result = find_characters_in_page("Arthur went to the castle.", characters)
+        assert len(result) == 0
+
+        # Should NOT match party
+        result = find_characters_in_page("They had a party.", characters)
+        assert len(result) == 0
+
+        # SHOULD match Art as a whole word
+        result = find_characters_in_page("Art painted a beautiful picture.", characters)
+        assert len(result) == 1
+        assert result[0][0] == "Art"
+
+    def test_word_boundary_at_sentence_boundaries(self) -> None:
+        """Character is found at start/end of sentences."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Max", "a friendly dog", ("golden",)),
+        ]
+        # At start
+        result = find_characters_in_page("Max ran quickly.", characters)
+        assert len(result) == 1
+
+        # At end
+        result = find_characters_in_page("Everyone cheered for Max.", characters)
+        assert len(result) == 1
+
+    def test_multiple_characters_found(self) -> None:
+        """Multiple characters are found in the same text."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Luna", "a mouse", ("small",)),
+            ("Felix", "a cat", ("orange",)),
+            ("Mr. Owl", "wise owl", ("feathery",)),
+        ]
+        result = find_characters_in_page(
+            "Luna and Felix visited Mr. Owl in his tree.",
+            characters,
+        )
+        assert len(result) == 3
+
+    def test_special_characters_in_name(self) -> None:
+        """Names with special characters are matched correctly."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Mr. Fox", "a clever fox", ("red",)),
+        ]
+        result = find_characters_in_page("Mr. Fox had a plan.", characters)
+        assert len(result) == 1
+        assert result[0][0] == "Mr. Fox"
+
+    def test_no_characters_found(self) -> None:
+        """Empty list returned when no characters match."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Luna", "a mouse", ("small",)),
+        ]
+        result = find_characters_in_page("The garden was peaceful.", characters)
+        assert len(result) == 0
+
+    def test_returns_visual_traits_as_list(self) -> None:
+        """Visual traits are returned as a list (not tuple)."""
+        from storyteller.generation import find_characters_in_page
+
+        characters = [
+            ("Luna", "a mouse", ("small", "brown", "curious")),
+        ]
+        result = find_characters_in_page("Luna explored.", characters)
+        assert len(result) == 1
+        assert isinstance(result[0][2], list)
+        assert result[0][2] == ["small", "brown", "curious"]
+
+
+class TestBuildIllustrationPromptSimple:
+    """Tests for the build_illustration_prompt_simple function."""
+
+    def test_basic_prompt(self) -> None:
+        """Basic prompt is created from page text."""
+        from storyteller.generation import build_illustration_prompt_simple
+
+        result = build_illustration_prompt_simple(
+            page_text="Luna found a magical flower.",
+            style="watercolor",
+        )
+        assert "Luna found a magical flower" in result
+        assert "watercolor" in result.lower()
+
+    def test_with_characters(self) -> None:
+        """Character traits are included in prompt."""
+        from storyteller.generation import build_illustration_prompt_simple
+
+        result = build_illustration_prompt_simple(
+            page_text="Test page",
+            characters=[("Luna", "a mouse", ["small", "brown"])],
+            style="cartoon",
+        )
+        assert "Luna" in result
+        assert "small" in result
+        assert "brown" in result
+
+    def test_invalid_style_raises_error(self) -> None:
+        """Invalid style name raises KeyError."""
+        import pytest
+        from storyteller.generation import build_illustration_prompt_simple
+
+        with pytest.raises(KeyError):
+            build_illustration_prompt_simple(
+                page_text="Test",
+                style="invalid_style_name",
+            )
+
+    def test_long_text_is_truncated(self) -> None:
+        """Text longer than MAX_SCENE_LENGTH is truncated."""
+        from storyteller.generation import build_illustration_prompt_simple
+        from storyteller.generation.prompts import MAX_SCENE_LENGTH
+
+        long_text = "A" * 500
+        result = build_illustration_prompt_simple(
+            page_text=long_text,
+            style="watercolor",
+        )
+        # The scene should be truncated
+        assert "..." in result
+        # The full long text should not appear
+        assert long_text not in result
+
+    def test_includes_safety_modifiers(self) -> None:
+        """Safety modifiers are included via apply_style."""
+        from storyteller.generation import build_illustration_prompt_simple
+
+        result = build_illustration_prompt_simple(
+            page_text="A test scene",
+            style="watercolor",
+        )
+        assert "children's book illustration" in result.lower()
+        assert "friendly" in result.lower()
+
+
+class TestMaxSceneLengthConstant:
+    """Tests for the MAX_SCENE_LENGTH constant."""
+
+    def test_constant_exists(self) -> None:
+        """MAX_SCENE_LENGTH constant is defined."""
+        from storyteller.generation.prompts import MAX_SCENE_LENGTH
+        assert MAX_SCENE_LENGTH == 200
+
+    def test_constant_is_reasonable(self) -> None:
+        """MAX_SCENE_LENGTH is a reasonable value for prompts."""
+        from storyteller.generation.prompts import MAX_SCENE_LENGTH
+        assert 100 <= MAX_SCENE_LENGTH <= 500
