@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 # Constants
 MAX_SEED = 2147483647  # Maximum value for 32-bit signed integer seed
-MAX_SCENE_LENGTH = 200  # Maximum length for scene description in prompts
 
 
 @dataclass(frozen=True)
