@@ -7,9 +7,13 @@ Templates are designed to be modular and easily adjustable for experimentation.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from string import Template
 from typing import Any
+
+# Constants
+MAX_SCENE_LENGTH = 200  # Maximum length for scene description in prompts
 
 
 @dataclass(frozen=True)
@@ -458,11 +462,15 @@ def build_illustration_prompt_simple(
     """
     from storyteller.generation.styles import apply_style
 
+    # Validate style early to catch invalid styles before processing
+    from storyteller.generation.styles import get_style
+    get_style(style)  # Raises KeyError if style is invalid
+
     # Start with the scene description based on page text
     # Strip the text to use as scene context
     scene = page_text.strip()
-    if len(scene) > 200:
-        scene = scene[:197] + "..."
+    if len(scene) > MAX_SCENE_LENGTH:
+        scene = scene[:MAX_SCENE_LENGTH - 3] + "..."
 
     parts = [f"Scene: {scene}"]
 
@@ -499,6 +507,9 @@ def find_characters_in_page(
     """
     Find which characters appear in a page based on name matching.
 
+    Uses word boundary matching to avoid false positives where a character
+    name is a substring of another word (e.g., "Art" matching "Arthur" or "party").
+
     Args:
         page_text: The text content of the page.
         all_characters: List of (name, description, visual_traits) tuples
@@ -507,11 +518,14 @@ def find_characters_in_page(
     Returns:
         List of characters that appear in this page.
     """
-    text_lower = page_text.lower()
     appearing = []
 
     for name, description, traits in all_characters:
-        if name.lower() in text_lower:
+        # Use word boundary regex to match whole words only
+        # re.escape handles special characters in names
+        # \b matches word boundaries (start/end of word)
+        pattern = r'\b' + re.escape(name) + r'\b'
+        if re.search(pattern, page_text, re.IGNORECASE):
             appearing.append((name, description, list(traits)))
 
     return appearing

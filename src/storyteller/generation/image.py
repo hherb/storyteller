@@ -21,6 +21,9 @@ from typing import Callable
 
 logger = logging.getLogger(__name__)
 
+# Constants
+MAX_SEED = 2147483647  # Maximum value for 32-bit signed integer seed
+
 
 @dataclass(frozen=True)
 class ImageConfig:
@@ -308,7 +311,7 @@ class ImageGenerator:
         # Determine seed
         seed = self._config.seed
         if seed is None:
-            seed = int(time.time() * 1000) % 2147483647
+            seed = int(time.time() * 1000) % MAX_SEED
 
         if progress_callback:
             progress_callback(GenerationProgress(
@@ -350,8 +353,26 @@ class ImageGenerator:
                 total_steps=self._config.steps,
             ))
 
+        # Security: Validate output path to prevent path traversal
+        # Resolve the path to get the absolute canonical path
+        resolved_path = output_path.resolve()
+
+        # Check for path traversal attempts (e.g., ../../../etc/passwd)
+        # The path must be within a reasonable project directory
+        # We check that the path doesn't escape to system directories
+        forbidden_prefixes = ("/etc", "/var", "/usr", "/bin", "/sbin", "/root", "/sys", "/proc")
+        path_str = str(resolved_path)
+        for forbidden in forbidden_prefixes:
+            if path_str.startswith(forbidden):
+                logger.error(f"Path traversal attempt detected: {output_path}")
+                return GenerationResult(
+                    success=False,
+                    error=f"Invalid output path: cannot write to system directory",
+                    generation_time=time.time() - start_time,
+                )
+
         # Ensure output directory exists
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        resolved_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Save the image
         image.save(path=str(output_path))
@@ -377,8 +398,16 @@ class ImageGenerator:
     def cancel(self) -> None:
         """Request cancellation of the current generation.
 
-        Note: Cancellation is best-effort and may not take effect
-        immediately during model inference.
+        Note: Cancellation is cooperative and best-effort. The cancellation
+        check only occurs at specific checkpoints:
+        - After model loading completes
+        - After image generation completes (30-90 seconds for schnell,
+          2-4 minutes for dev model)
+
+        This means cancellation cannot interrupt an in-progress generation
+        step. The request will be honored at the next checkpoint. For
+        immediate cancellation, the background thread would need to be
+        terminated externally, which is not supported.
         """
         self._cancel_requested = True
         logger.info("Cancellation requested")
@@ -386,13 +415,14 @@ class ImageGenerator:
 
 # Module-level singleton for convenience
 _default_generator: ImageGenerator | None = None
+_singleton_lock = threading.Lock()  # Thread-safe singleton initialization
 
 
 def get_generator(config: ImageConfig | None = None) -> ImageGenerator:
     """Get the default image generator instance.
 
     This provides a singleton generator to avoid loading the model
-    multiple times.
+    multiple times. Thread-safe for concurrent access during startup.
 
     Args:
         config: Optional configuration. If provided and different from
@@ -403,8 +433,12 @@ def get_generator(config: ImageConfig | None = None) -> ImageGenerator:
     """
     global _default_generator
 
+    # Double-checked locking pattern for thread-safe singleton
     if _default_generator is None:
-        _default_generator = ImageGenerator(config)
+        with _singleton_lock:
+            # Check again inside the lock
+            if _default_generator is None:
+                _default_generator = ImageGenerator(config)
     elif config is not None:
         _default_generator.update_config(config)
 
